@@ -32,11 +32,17 @@ const lightningArmor = [
 ];
 const bodyFlicker = [{ fx: "smoke", anchor: "torso", scale: 1.0, variant: 2, colA: [0.35, 0.7, 0.2], colB: [0.85, 0.95, 1.0] }];
 const flyingThunderGod = [{ fx: "smoke", anchor: "torso", scale: 0.9, variant: 3, colA: [1.0, 0.85, 0.3], colB: [1.0, 0.92, 0.45] }];
-const summoningToads = [{ fx: "smoke", anchor: "ground", scale: 0.5, variant: 1, colA: [1.0, 0.55, 0.2], colB: WHITE }];
+const summoningToads = [
+  { fx: "smoke", anchor: "ground", scale: 0.5, variant: 1, colA: [1.0, 0.55, 0.2], colB: WHITE },
+  { fx: "summon", anchor: "ground", scale: 0.3, variant: 0, colA: [0.85, 0.35, 0.12], colB: [0.98, 0.8, 0.55] },
+];
 const woodRelease = [{ fx: "wood", anchor: "hands", scale: 0.9, variant: 0, colA: [0.55, 0.36, 0.18], colB: [0.3, 0.7, 0.2] }];
+// Smoke poofs where the two video clones appear (copy shader offsets them
+// 0.8 torso units to each side; offsets here are in the smoke's own units).
+const clonePoofs = [-1, 1].map((side) => ({ fx: "smoke", anchor: "torso", scale: 0.45, variant: 0, offset: [(side * 0.8) / 0.45, 0] }));
 const woodClone = [
-  { fx: "clone", anchor: "hand", tint: [0.62, 0.42, 0.22], tintMix: 0.85 },
-  { fx: "smoke", anchor: "hand", scale: 0.8, variant: 0 },
+  { fx: "copy", anchor: "torso", variant: 1, colA: [0.6, 0.4, 0.2], colB: [0.4, 0.8, 0.3] },
+  ...clonePoofs,
 ];
 const byakugan = [
   { fx: "facemark", anchor: "face", variant: 3, colA: [0.42, 0.36, 0.58] },
@@ -51,10 +57,10 @@ const chidori = [{ fx: "chidori", anchor: "hand", scale: 1.0, warp: 1 }];
 const edoTensei = [{ fx: "genjutsu", anchor: "face", scale: 1.0, variant: 2, colA: [0.22, 0.12, 0.3] }];
 const kamui = [
   { fx: "vortex", anchor: "hand", scale: 1.1, colA: [0.55, 0.45, 0.8], colB: [0.45, 0.3, 0.9] },
-  { fx: "eyes", anchor: "eyes", variant: 2 },
+  { fx: "eyes", anchor: "eyes", variant: 5 },
 ];
 const shadow = (variant) => [{ fx: "shadow", anchor: "torso", scale: 0.6, variant, colA: INK, colB: [0.25, 0.1, 0.4] }];
-const smokeClone = [{ fx: "smoke", anchor: "torso", scale: 0.55, variant: 0 }];
+const susanooTinted = (tint) => [{ ...susanoo[0], tint, tintMix: 0.75 }];
 
 export const SKILL_FX = {
   // Choji Akimichi
@@ -99,8 +105,8 @@ export const SKILL_FX = {
   "Eight Trigrams Sixty-Four Palms": {
     layers: [
       { fx: "shock", anchor: "ground", scale: 0.55, variant: 3, colA: [0.4, 0.75, 1.0], colB: WHITE, offset: [0, 0.6] },
-      ...gentleFist,
-      ...byakugan,
+      { ...gentleFist[0], scale: 0.35 },
+      byakugan[0],
     ],
   },
 
@@ -137,13 +143,14 @@ export const SKILL_FX = {
 
   // Ino Yamanaka
   "Mind Body Switch Technique": {
-    layers: [{ fx: "genjutsu", anchor: "between", variant: 1, colA: [0.75, 0.5, 1.0], colB: [1.0, 0.6, 0.95] }],
+    layers: [{ fx: "mind", anchor: "between", scale: 0.9, variant: 0, colA: [0.85, 0.55, 1.0], colB: [1.0, 0.8, 1.0] }],
   },
   "Mind Destruction": {
-    layers: [{ fx: "genjutsu", anchor: "between", variant: 1, colA: [0.55, 0.3, 1.0], colB: [0.9, 0.3, 0.6] }],
+    layers: [{ fx: "mind", anchor: "face", variant: 1, colA: [0.6, 0.3, 1.0], colB: [1.0, 0.3, 0.7] }],
+    bloom: 0.5,
   },
   "Mind Transmission Technique": {
-    layers: [{ fx: "genjutsu", anchor: "face", variant: 1, colA: [0.45, 0.85, 1.0], colB: [0.8, 0.95, 1.0] }],
+    layers: [{ fx: "mind", anchor: "face", scale: 0.8, variant: 2, colA: [0.3, 0.7, 1.0], colB: [0.85, 0.97, 1.0] }],
   },
 
   // Jiraiya / Minato / Naruto defaults
@@ -163,12 +170,12 @@ export const SKILL_FX = {
   "Snake Summoning": {
     layers: [
       { fx: "smoke", anchor: "ground", scale: 0.5, variant: 1, colA: [0.7, 0.4, 1.0], colB: WHITE },
-      { fx: "snakes", anchor: "ground", scale: 0.45, variant: 2, colA: [0.45, 0.35, 0.55], colB: [0.85, 0.8, 0.7], dir: [0, 1] },
+      { fx: "snakes", anchor: "ground", scale: 0.3, variant: 2, colA: [0.45, 0.35, 0.55], colB: [0.85, 0.8, 0.7], dir: [0, 1] },
     ],
   },
   "Living Corpse Reincarnation": {
     layers: [
-      { fx: "snakes", anchor: "hands", scale: 0.7, variant: 1, colA: [0.25, 0.42, 0.2], colB: [0.8, 0.85, 0.6] },
+      { fx: "snakes", anchor: "hands", scale: 0.6, variant: 1, colA: [0.86, 0.86, 0.8], colB: [0.98, 0.94, 0.82] },
       { fx: "facemark", anchor: "face", variant: 2, colA: [0.45, 0.12, 0.55], colB: [1.0, 0.85, 0.15] },
     ],
   },
@@ -176,7 +183,10 @@ export const SKILL_FX = {
   // Kakashi
   "Chidori": { layers: chidori },
   "Summoning: Ninja Hounds": {
-    layers: [{ fx: "smoke", anchor: "ground", scale: 0.5, variant: 1, colA: [0.35, 0.75, 1.0], colB: WHITE }],
+    layers: [
+      { fx: "smoke", anchor: "ground", scale: 0.5, variant: 1, colA: [0.35, 0.75, 1.0], colB: WHITE },
+      { fx: "summon", anchor: "ground", scale: 0.42, variant: 1, colA: [0.6, 0.5, 0.38], colB: [0.15, 0.25, 0.55] },
+    ],
   },
 
   // Kiba Inuzuka
@@ -184,34 +194,31 @@ export const SKILL_FX = {
     layers: [{ fx: "tornado", anchor: "torso", scale: 0.6, variant: 0, colA: [0.45, 0.4, 0.35], colB: [0.95, 0.92, 0.85] }],
   },
   "Beast Human Clone": {
-    layers: [
-      { fx: "clone", anchor: "hand", tint: [0.65, 0.58, 0.5], tintMix: 0.8 },
-      { fx: "smoke", anchor: "torso", scale: 0.55, variant: 0 },
-    ],
+    layers: [{ fx: "copy", anchor: "torso", variant: 2, colA: [0.8, 0.66, 0.52], colB: [1.0, 0.55, 0.25] }, ...clonePoofs],
   },
   "Twin Wolf Fang": {
-    layers: [{ fx: "tornado", anchor: "hands", scale: 0.6, variant: 0, colA: [0.45, 0.4, 0.35], colB: [0.95, 0.92, 0.85] }],
+    layers: [{ fx: "tornado", anchor: "torso", scale: 0.6, variant: 2, colA: [0.45, 0.4, 0.35], colB: [0.92, 0.88, 0.82] }],
   },
 
   // Kisame / Tobirama
   "Water Release: Shark Bomb": {
-    layers: [{ fx: "water", anchor: "hand", scale: 0.8, variant: 1, colA: [0.1, 0.4, 0.85], colB: [0.85, 0.95, 1.0] }],
+    layers: [{ fx: "water", anchor: "hand", scale: 1.1, variant: 2, colA: [0.1, 0.4, 0.85], colB: [0.85, 0.95, 1.0] }],
   },
   "Samehada": {
-    layers: [{ fx: "aura", anchor: "hands", scale: 0.7, variant: 0, colA: [0.15, 0.35, 0.9], colB: [0.5, 0.9, 1.0] }],
+    layers: [{ fx: "sword", anchor: "hand", scale: 0.8, colA: [0.38, 0.5, 0.66], colB: [0.3, 0.7, 1.0] }],
   },
   "Water Prison": {
     layers: [{ fx: "water", anchor: "torso", scale: 0.8, variant: 1, colA: [0.1, 0.45, 0.85], colB: [0.85, 0.95, 1.0] }],
   },
   "Water Release: Water Dragon": {
-    layers: [{ fx: "water", anchor: "hand", scale: 0.9, variant: 0, colA: [0.1, 0.4, 0.9], colB: [0.85, 0.95, 1.0] }],
+    layers: [{ fx: "water", anchor: "hand", scale: 0.85, variant: 0, colA: [0.1, 0.4, 0.9], colB: [0.85, 0.95, 1.0] }],
   },
 
   // Konan / Yahiko
   "Paper Release": { layers: [{ fx: "paper", anchor: "hands", scale: 0.8, variant: 0, colA: [0.96, 0.95, 0.9] }] },
   "Paper Clone": {
     layers: [
-      { fx: "clone", anchor: "hand", tint: [0.95, 0.93, 0.88], tintMix: 0.9 },
+      { fx: "copy", anchor: "torso", variant: 3, colA: [0.96, 0.95, 0.9], colB: [0.85, 0.85, 1.0] },
       { fx: "paper", anchor: "hand", scale: 0.8, variant: 0, colA: [0.96, 0.95, 0.9] },
     ],
   },
@@ -223,7 +230,7 @@ export const SKILL_FX = {
   },
   "Six Paths of Pain": {
     layers: [
-      { fx: "shock", anchor: "torso", scale: 0.45, variant: 2, colA: [0.7, 0.65, 0.95], colB: WHITE },
+      { fx: "shock", anchor: "torso", scale: 0.5, variant: 2, colA: [0.7, 0.65, 0.95], colB: WHITE },
       { fx: "eyes", anchor: "eyes", variant: 3 },
     ],
   },
@@ -233,10 +240,15 @@ export const SKILL_FX = {
 
   // Rock Lee
   "Primary Lotus": {
-    layers: [{ fx: "tornado", anchor: "torso", scale: 0.6, variant: 0, colA: [0.85, 0.15, 0.1], colB: [1.0, 0.92, 0.85] }],
+    layers: [{ fx: "tornado", anchor: "torso", scale: 0.6, variant: 3, colA: [0.85, 0.15, 0.1], colB: [0.95, 0.93, 0.88] }],
   },
   "Eight Gates": {
-    layers: [{ fx: "aura", anchor: "torso", scale: 0.9, variant: 0, colA: [0.15, 0.95, 0.4], colB: [0.85, 1.0, 0.7] }],
+    // Green chakra cloak plus the gates' signature steam pouring off the body.
+    layers: [
+      { fx: "aura", anchor: "torso", scale: 0.9, variant: 0, colA: [0.15, 0.95, 0.4], colB: [0.85, 1.0, 0.7], gain: 0.8 },
+      { fx: "steam", anchor: "hands", scale: 1.6, gain: 1.8 },
+      { fx: "steam", anchor: "torso", scale: 0.9, offset: [0, 0.4], gain: 1.6 },
+    ],
   },
   "Leaf Hurricane": {
     layers: [{ fx: "tornado", anchor: "torso", scale: 1.0, variant: 1, colA: [0.75, 0.95, 0.85], colB: [0.3, 0.65, 0.15] }],
@@ -246,7 +258,8 @@ export const SKILL_FX = {
   "Strength of a Hundred Seal": {
     layers: [
       { fx: "facemark", anchor: "face", variant: 1, colA: [0.6, 0.2, 0.75] },
-      { fx: "aura", anchor: "torso", scale: 0.7, variant: 2, colA: [0.65, 0.35, 0.95] },
+      { fx: "aura", anchor: "torso", scale: 0.7, variant: 0, colA: [0.55, 0.2, 0.9], colB: [0.85, 0.6, 1.0], gain: 0.7 },
+      { fx: "aura", anchor: "hands", scale: 0.45, variant: 0, colA: [0.6, 0.25, 1.0], colB: [0.95, 0.75, 1.0] },
     ],
   },
   "Byakugō Healing": {
@@ -278,7 +291,7 @@ export const SKILL_FX = {
 
   // Fallback roster (characters without a skills entry)
   "Shadow Clone Jutsu": {
-    layers: [{ fx: "clone", anchor: "hands", scale: 0.8, tint: [1.0, 0.62, 0.3], tintMix: 0.6 }, ...smokeClone],
+    layers: [{ fx: "copy", anchor: "torso", variant: 0, colB: [0.85, 0.92, 1.0] }, ...clonePoofs],
   },
   "Substitution Jutsu": {
     layers: [
@@ -290,8 +303,33 @@ export const SKILL_FX = {
 
 const DEFAULT_FX = { layers: [{ fx: "orb", anchor: "hands", tint: BLUE, tintMix: 0 }] };
 
-export function fxForSkill(skill) {
-  return SKILL_FX[skill] || DEFAULT_FX;
+// Same technique, different user: per-character variants (keyed by the
+// character id from the matching backend).
+export const CHARACTER_FX = {
+  "itachi-uchiha": { "Susanoo": { layers: susanooTinted([1.0, 0.3, 0.25]) } },
+  "madara-uchiha": { "Susanoo": { layers: susanooTinted([0.35, 0.55, 1.0]) } },
+  "indra-otsutsuki": { "Susanoo": { layers: susanooTinted([0.7, 0.5, 1.0]) } },
+  "fourth-raikage": {
+    "Body Flicker": {
+      layers: [
+        { fx: "aura", anchor: "torso", scale: 0.7, variant: 1, colA: [0.25, 0.55, 1.0], colB: [0.75, 0.92, 1.0], gain: 0.8 },
+        { fx: "smoke", anchor: "torso", scale: 1.0, variant: 2, colA: [0.55, 0.8, 1.0], colB: [0.7, 0.88, 1.0] },
+      ],
+    },
+  },
+  "third-raikage": {
+    "Lightning Release Armor": {
+      layers: [
+        { fx: "aura", anchor: "torso", scale: 0.8, variant: 1, colA: [1.0, 0.7, 0.15], colB: [1.0, 0.95, 0.6] },
+        { fx: "chidori", anchor: "hands", scale: 0.55, tint: [1.0, 0.85, 0.35], tintMix: 0.7 },
+      ],
+    },
+  },
+  "obito-uchiha": { "Mangekyō Sharingan": { layers: [{ fx: "eyes", anchor: "eyes", variant: 5 }], bloom: 0 } },
+};
+
+export function fxForSkill(skill, character) {
+  return CHARACTER_FX[character]?.[skill] || SKILL_FX[skill] || DEFAULT_FX;
 }
 
 // Which trackers a spec needs, so we only load the models we'll use.

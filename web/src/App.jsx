@@ -348,7 +348,7 @@ export default function App() {
           )}
 
           {(jutsuState?.stage === "cast" || jutsuState?.stage === "done") && (
-            <JutsuFx skill={jutsuSkill} stream={streamRef.current} />
+            <JutsuFx skill={jutsuSkill} character={result?.id} stream={streamRef.current} />
           )}
 
           {jutsuState?.stage === "cast" && voiceSrc && (

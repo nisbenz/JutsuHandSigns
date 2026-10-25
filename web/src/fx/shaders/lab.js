@@ -1643,7 +1643,8 @@ vec4 eyeColor(vec2 fragPx, vec2 eyePos, float eyeR, float halfW, float halfH, fl
   float spin = uTime * spinSpeed;
   float tomoe = max(tomoeMask(p, spin), max(tomoeMask(p, spin + 2.094), tomoeMask(p, spin + 4.189)));
   // Variants: 0 tomoe Sharingan, 1 Itachi-style Mangekyo pinwheel,
-  // 2 Shisui/Obito-style bent shuriken, 3 Rinnegan rings, 4 Byakugan.
+  // 2 Shisui-style four-blade shuriken, 3 Rinnegan rings, 4 Byakugan,
+  // 5 Obito/Kakashi three-blade pinwheel.
   float ang = atan(p.y, p.x) - spin;
   float rr = length(p);
   if (uVariant > 0.5 && uVariant < 1.5) {
@@ -1655,6 +1656,11 @@ vec4 eyeColor(vec2 fragPx, vec2 eyePos, float eyeR, float halfW, float halfH, fl
     tomoe = smoothstep(0.05, -0.03, blade) * smoothstep(0.82, 0.76, rr) * smoothstep(0.16, 0.24, rr);
   } else if (uVariant > 2.5 && uVariant < 3.5) {
     tomoe = smoothstep(0.035, 0.0, abs(fract(rr * 4.2) - 0.5) - 0.44) * smoothstep(0.95, 0.85, rr);
+  } else if (uVariant > 4.5) {
+    // Obito/Kakashi: three curved blades around a ringed pupil.
+    float blade = abs(sin(1.5 * (ang - rr * 3.4))) - 0.55 * (1.0 - rr * 0.85);
+    tomoe = smoothstep(0.05, -0.03, blade) * smoothstep(0.84, 0.78, rr) * smoothstep(0.2, 0.28, rr);
+    tomoe = max(tomoe, smoothstep(0.035, 0.0, abs(rr - 0.2)));
   } else if (uVariant > 3.5) {
     tomoe = 0.0;
   }
@@ -1670,7 +1676,7 @@ vec4 eyeColor(vec2 fragPx, vec2 eyePos, float eyeR, float halfW, float halfH, fl
   vec3 brightRed = vec3(1.0, 0.08, 0.04);
   vec3 deepCrimson = vec3(0.65, 0.01, 0.01);
   if (uVariant > 2.5 && uVariant < 3.5) { brightRed = vec3(0.78, 0.68, 0.98); deepCrimson = vec3(0.45, 0.36, 0.72); }
-  if (uVariant > 3.5) { brightRed = vec3(0.93, 0.92, 0.98); deepCrimson = vec3(0.78, 0.74, 0.9); pupilMask = 0.0; }
+  if (uVariant > 3.5 && uVariant < 4.5) { brightRed = vec3(0.93, 0.92, 0.98); deepCrimson = vec3(0.78, 0.74, 0.9); pupilMask = 0.0; }
   vec3 irisCol = mix(brightRed, deepCrimson, smoothstep(0.1, 0.85, dist));
   irisCol = mix(irisCol, vec3(0.02), tomoe);
   irisCol = mix(irisCol, vec3(0.02), pupilMask);

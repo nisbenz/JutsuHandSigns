@@ -9,7 +9,7 @@ import { fxForSkill, trackersFor } from "./catalog";
 // Pass either `stream` (a MediaStream; real tracking) or `mock` (synthetic
 // tracking over a generated backdrop, for the ?fxlab gallery). `restartKey`
 // restarts the cast animation from t=0 when it changes.
-export default function JutsuFx({ skill, stream, mock = false, restartKey = 0, className = "" }) {
+export default function JutsuFx({ skill, character, stream, mock = false, restartKey = 0, className = "" }) {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
   const [missing, setMissing] = useState("");
@@ -34,7 +34,7 @@ export default function JutsuFx({ skill, stream, mock = false, restartKey = 0, c
       console.error("[fx]", err);
       return undefined;
     }
-    const spec = fxForSkill(skill);
+    const spec = fxForSkill(skill, character);
     const tracker = mock ? new MockTracker() : new Tracker(source, trackersFor(spec));
     const start = performance.now();
     let raf = 0;
@@ -64,7 +64,7 @@ export default function JutsuFx({ skill, stream, mock = false, restartKey = 0, c
       tracker.dispose();
       renderer.dispose();
     };
-  }, [skill, stream, mock, restartKey]);
+  }, [skill, character, stream, mock, restartKey]);
 
   return (
     <div className={`jutsu-fx ${className}`}>

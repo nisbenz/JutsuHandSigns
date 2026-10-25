@@ -4,7 +4,7 @@
 // (0 = pure glow, 1 = this pixel hides the video). Each family is
 // parameterised by uColA/uColB/uVariant so one shader covers many jutsu.
 
-const PRELUDE = `#version 300 es
+export const PRELUDE = `#version 300 es
 precision highp float;
 uniform vec2 uResolution;
 uniform float uTime;      // seconds since the jutsu was cast
@@ -60,7 +60,7 @@ vec2 dirP(vec2 p) {
 }
 `;
 
-const VIDEO = `
+export const VIDEO = `
 uniform sampler2D uVideoTex;
 uniform vec2 uCanvasSize;
 uniform vec2 uVideoOffset;
@@ -260,28 +260,45 @@ void main() {
 `;
 
 // --- Water ------------------------------------------------------------------
-// 0: water dragon / stream snaking along uDir   1: water sphere (Water
-// Prison, Shark Bomb)
+// 0: Water Dragon - serpent body snaking along uDir with a horned head
+// 1: water sphere (Water Prison)   2: Shark Bomb - water shark charging out
 export const WATER_FRAG_SRC = PRELUDE + VIDEO + `
+float ell(vec2 p, vec2 r) { return length(p / r) - 1.0; }
 void main() {
   vec2 p = localP();
   float t = uTime;
   float mask;
   vec2 normal;
   float foam;
+  float eyes = 0.0;
   if (uVariant < 0.5) {
     vec2 q = dirP(p);
-    float len = 7.0 * smoothstep(0.0, 1.6, t);
+    float len = 3.0 * smoothstep(0.0, 1.6, t);
     float s = q.x;
-    float center = sin(s * 1.4 - t * 4.0) * 0.6 * smoothstep(0.0, 2.0, s);
-    float head = smoothstep(len - 0.2, len - 1.4, s);
-    float w = mix(0.28, 0.7, smoothstep(0.0, len, s)) * (s > len - 1.2 ? 1.25 : 1.0);
+    float bend = 0.55 * smoothstep(0.0, 2.0, s);
+    float center = sin(s * 1.3 - t * 3.5) * bend;
+    float w = mix(0.22, 0.5, smoothstep(0.0, len, s));
     float dy = q.y - center;
-    mask = smoothstep(w, w - 0.08, abs(dy)) * smoothstep(-0.2, 0.2, s) * smoothstep(len + 0.3, len - 0.1, s);
-    normal = vec2(0.0, dy / w);
+    float body = smoothstep(w, w - 0.08, abs(dy)) * smoothstep(-0.2, 0.2, s) * step(s, len - 0.3);
+    // Head at the leading end, following the body's sway.
+    float hc = sin(len * 1.3 - t * 3.5) * 0.55 * smoothstep(0.0, 2.0, len);
+    vec2 h = vec2(s - len, q.y - hc);
+    float skull = ell(h - vec2(-0.15, 0.0), vec2(0.62, 0.42));
+    float snout = ell(h - vec2(0.35, -0.05), vec2(0.45, 0.24));
+    // Open jaw: carve a wedge out of the front.
+    float jaw = h.x > 0.1 ? abs(h.y + 0.05) - (h.x - 0.1) * 0.35 : 1.0;
+    float headD = max(min(skull, snout), -jaw);
+    vec2 hornA = h - vec2(-0.35, 0.3);
+    float horns = min(sdSeg(h, vec2(-0.3, 0.3), vec2(-1.0, 0.75)), sdSeg(h, vec2(-0.3, -0.3), vec2(-1.0, -0.75))) - 0.06;
+    float headM = smoothstep(0.03, -0.03, min(headD, horns)) * step(0.3, len);
+    mask = max(body, headM);
+    normal = headM > body ? normalize(h + vec2(0.0, 1e-3)) * 0.8 : vec2(0.0, dy / w);
     float flow = fbm(vec2(s * 3.0 - t * 7.0, dy * 4.0));
-    foam = smoothstep(0.6, 0.85, flow) + smoothstep(0.7, 1.0, abs(dy) / w) * 0.6 + (1.0 - head) * 0.3;
-  } else {
+    foam = smoothstep(0.62, 0.85, flow) + smoothstep(0.7, 1.0, abs(dy) / w) * 0.6 * body;
+    foam += smoothstep(0.0, -0.05, -abs(headD)) * headM * 0.0;
+    eyes = smoothstep(0.08, 0.04, length(vec2(h.x + 0.05, abs(h.y) - 0.2))) * headM;
+    foam += exp(-abs(min(headD, horns)) * 25.0) * headM * 0.5;
+  } else if (uVariant < 1.5) {
     float r = length(p);
     float rad = 1.0 + 0.04 * sin(t * 3.0 + atan(p.y, p.x) * 5.0);
     rad *= smoothstep(0.0, 0.6, t);
@@ -289,12 +306,35 @@ void main() {
     normal = p / max(rad, 0.01);
     float caust = fbm(p * 3.0 + vec2(t * 0.6, -t * 0.4));
     foam = smoothstep(0.88, 1.0, r / max(rad, 0.01)) * 0.8 + smoothstep(0.62, 0.8, caust) * 0.4;
+  } else {
+    // Shark launched from the hand along uDir, re-launching every 2.4s.
+    vec2 q = dirP(p);
+    float cyc = mod(t, 2.4);
+    float x0 = mix(0.3, 5.5, smoothstep(0.0, 2.2, cyc));
+    vec2 h = vec2(q.x - x0, q.y - sin(cyc * 6.0) * 0.08);
+    float tailWag = sin(t * 14.0) * 0.12;
+    float bodyD = ell(h, vec2(1.15, 0.36 - 0.12 * smoothstep(0.0, -1.1, h.x)));
+    // Dorsal fin (on the +y side) and forked tail.
+    float fin = max(max(-(h.y - 0.25), h.x * 0.9 + (h.y - 0.25) * 0.75 - 0.15), -(h.x + 0.45) - (h.y - 0.25) * 0.2);
+    vec2 tl = h - vec2(-1.15, tailWag);
+    float tail = max(abs(tl.y) - 0.05 - max(-tl.x, 0.0) * 0.7, max(tl.x - 0.05, -tl.x - 0.5));
+    float d = min(bodyD, min(fin, tail));
+    mask = smoothstep(0.03, -0.03, d) * smoothstep(0.0, 0.3, cyc) * (1.0 - smoothstep(2.1, 2.4, cyc));
+    normal = normalize(h * vec2(0.5, 1.0) + vec2(0.0, 1e-3));
+    float teeth = step(0.75, h.x) * step(abs(h.y + 0.05), 0.06) * step(0.5, fract(h.y * 0.0 + h.x * 14.0));
+    foam = teeth * 2.0 + exp(-abs(d) * 30.0) * 0.6;
+    eyes = smoothstep(0.05, 0.03, length(h - vec2(0.62, 0.12))) * mask;
+    // Spray trail behind it.
+    float trail = exp(-q.y * q.y * 18.0) * step(q.x, x0 - 1.0) * step(0.0, q.x) * fbm(vec2(q.x * 6.0 - t * 10.0, q.y * 8.0));
+    mask = max(mask, trail * 0.6 * (1.0 - smoothstep(2.1, 2.4, cyc)));
+    foam += trail;
   }
   vec2 refr = normal * uHandScale * 0.25;
   vec3 seen = sampleVideo(gl_FragCoord.xy - refr);
   vec3 col = mix(seen, uColA, 0.45) + uColB * foam;
   float spec = pow(max(0.0, 1.0 - length(normal - vec2(-0.4, 0.5))), 6.0);
   col += vec3(1.0) * spec * 0.6;
+  col = mix(col, vec3(0.02, 0.05, 0.12), eyes);
   fragColor = vec4(col * mask * uActive, mask * uActive);
 }
 `;
@@ -631,14 +671,38 @@ void main() {
       float fi = float(i);
       float ph = fract(t * 2.5 + hash1(fi));
       vec2 c = vec2(hash1(fi * 2.0) - 0.5, hash1(fi * 5.0) - 0.2) * 1.6;
-      hits += exp(-pow(length(p - c) - ph * 0.5, 2.0) * 300.0) * (1.0 - ph);
+      hits += exp(-pow(length(p - c) - ph * 0.3, 2.0) * 600.0) * (1.0 - ph);
     }
-    col += uColB * hits * 1.5;
+    col += uColB * hits * 0.6;
     fragColor = vec4(col * uActive, 0.0);
     return;
   }
-  float period = uVariant > 1.5 && uVariant < 2.5 ? 2.6 : 1.6;
-  float speed = uVariant > 1.5 && uVariant < 2.5 ? 1.6 : 3.0;
+  if (uVariant > 1.5 && uVariant < 2.5) {
+    // Shinra Tensei: a refracting dome of force bursts outward from the
+    // body, shoving the picture away from its centre, with debris thrown out.
+    float cyc = mod(t, 2.4);
+    float rad = 1.7 * (1.0 - exp(-cyc * 2.2));
+    float fade = 1.0 - smoothstep(1.4, 2.4, cyc);
+    float inside = smoothstep(rad, rad - 0.06, r);
+    float push = inside * (1.0 - r / max(rad, 0.01)) * 0.5;
+    vec3 seen = sampleVideo(gl_FragCoord.xy - normalize(p + 1e-4) * push * uHandScale);
+    float rim = exp(-pow(r - rad, 2.0) * 60.0);
+    col = mix(seen, seen * 1.15 + uColA * 0.15, inside) + uColB * rim * 1.2 + uColA * exp(-r * r * 6.0) * exp(-cyc * 3.0) * 1.5;
+    a = max(inside, rim) * fade;
+    for (int i = 0; i < 14; i++) {
+      float fi = float(i);
+      float ang = hash1(fi * 4.7) * 6.2831;
+      vec2 dpos = vec2(cos(ang), sin(ang)) * (rad + 0.15 + hash1(fi) * 0.3);
+      vec2 q = rot(cyc * 6.0 + fi) * (p - dpos);
+      float rock = smoothstep(0.01, -0.01, max(abs(q.x), abs(q.y)) - mix(0.04, 0.09, hash1(fi * 9.0)));
+      col = mix(col, vec3(0.22, 0.2, 0.18), rock);
+      a = max(a, rock * fade);
+    }
+    fragColor = vec4(col * a * uActive, a * uActive);
+    return;
+  }
+  float period = 1.6;
+  float speed = 3.0;
   float ph = mod(t, period);
   float rad = ph * speed;
   float ringBand = exp(-pow(r - rad, 2.0) * 18.0) * (1.0 - ph / period);
@@ -680,12 +744,28 @@ void main() {
 `;
 
 // --- Tornado / drilling spin --------------------------------------------------
-// 0: drill vortex (Fang Over Fang, Primary Lotus)   1: Leaf Hurricane sweep
+// 0: Fang Over Fang drill   1: Leaf Hurricane sweep
+// 2: Twin Wolf Fang - two drills corkscrewing around each other
+// 3: Primary Lotus - head-first plunging drill wrapped in bandages
 export const TORNADO_FRAG_SRC = PRELUDE + `
+// One spinning cone, apex at q.y = 0 widening upward; returns premult rgb + a.
+vec4 drill(vec2 q, float spin, vec3 dark, vec3 light) {
+  float h = q.y;
+  float radius = 0.3 + max(h, 0.0) * 0.36;
+  float inside = smoothstep(radius, radius - 0.1, abs(q.x)) * smoothstep(-0.1, 0.2, h) * smoothstep(3.0, 2.4, h);
+  float u = q.x / max(radius, 0.01);
+  float spiral = fract(asin(clamp(u, -1.0, 1.0)) / 3.1416 * 2.0 + h * 1.6 - spin);
+  float bands = smoothstep(0.0, 0.15, spiral) * smoothstep(0.55, 0.25, spiral);
+  float depth = sqrt(max(0.0, 1.0 - u * u));
+  vec3 col = mix(dark * 0.5, light, bands) * (0.4 + 0.6 * depth);
+  col += light * smoothstep(0.65, 0.9, fbm(vec2(spiral * 6.0, h * 3.0))) * 0.6;
+  float a = inside * (0.45 + 0.4 * bands);
+  return vec4(col * a, a * 0.8);
+}
 void main() {
   vec2 p = localP();
   float t = uTime;
-  if (uVariant > 0.5) {
+  if (uVariant > 0.5 && uVariant < 1.5) {
     float r = length(p * vec2(1.0, 1.6));
     float ang = atan(p.y * 1.6, p.x);
     float arcs = pow(0.5 + 0.5 * sin(ang * 2.0 - t * 12.0 + r * 4.0), 6.0) * exp(-pow(r - 1.3, 2.0) * 4.0);
@@ -703,19 +783,42 @@ void main() {
     fragColor = vec4(col * uActive, a * uActive);
     return;
   }
-  vec2 q = vec2(p.x, p.y + 1.2);
-  float h = q.y;
-  float radius = 0.35 + max(h, 0.0) * 0.38;
-  float inside = smoothstep(radius, radius - 0.1, abs(q.x)) * smoothstep(-0.1, 0.2, h) * smoothstep(3.2, 2.6, h);
-  float u = q.x / max(radius, 0.01);
-  float spiral = fract(asin(clamp(u, -1.0, 1.0)) / 3.1416 * 2.0 + h * 1.6 - t * 6.0);
-  float bands = smoothstep(0.0, 0.15, spiral) * smoothstep(0.55, 0.25, spiral);
-  float depth = sqrt(max(0.0, 1.0 - u * u));
-  vec3 col = mix(uColA * 0.5, uColB, bands) * (0.4 + 0.6 * depth);
-  float streak = fbm(vec2(spiral * 6.0, h * 3.0));
-  col += uColB * smoothstep(0.65, 0.9, streak) * 0.6;
-  float a = inside * (0.45 + 0.4 * bands);
-  fragColor = vec4(col * a * uActive, a * 0.8 * uActive);
+  if (uVariant > 1.5 && uVariant < 2.5) {
+    // Two drills orbiting a shared axis; the one "in front" draws on top.
+    float orbit = t * 5.0;
+    vec4 outC = vec4(0.0);
+    for (int i = 0; i < 2; i++) {
+      float ph = orbit + float(i) * 3.1416;
+      vec2 q = vec2(p.x - sin(ph) * 0.55, p.y + 1.1);
+      vec4 d = drill(q * 1.15, t * 7.0 + float(i), i == 0 ? uColA : uColB * 0.8, i == 0 ? vec3(0.95, 0.9, 0.85) : uColB);
+      float front = cos(ph);
+      d *= 0.75 + 0.25 * front;
+      outC = front > 0.0 ? d + outC * (1.0 - d.a) : outC + d * (1.0 - outC.a);
+    }
+    fragColor = outC * uActive;
+    return;
+  }
+  if (uVariant > 2.5) {
+    // Plunging drill (apex pointing down) + bandage strips spiralling round.
+    vec4 d = drill(vec2(p.x, -(p.y - 1.4)), t * 9.0, uColA, vec3(1.0, 0.75, 0.6));
+    vec3 col = d.rgb;
+    float a = d.a;
+    for (int i = 0; i < 3; i++) {
+      float fi = float(i);
+      float y = 0.2 + fi * 0.45 + 0.28 * sin(p.x * 2.6 + t * 9.0 + fi * 2.1);
+      float strip = smoothstep(0.07, 0.05, abs(p.y - y)) * smoothstep(1.15, 0.9, abs(p.x));
+      float shade = 0.7 + 0.3 * cos(p.x * 2.6 + t * 9.0 + fi * 2.1);
+      vec3 sc = uColB * shade * (0.9 + 0.1 * step(0.5, fract(p.x * 10.0)));
+      col = mix(col, sc, strip);
+      a = max(a, strip);
+    }
+    // Vertical speed lines.
+    float lines = step(0.92, hash(vec2(floor(p.x * 30.0), 0.0))) * fract(-p.y * 0.6 + t * 3.0 + hash(vec2(floor(p.x * 30.0), 1.0)));
+    col += vec3(1.0) * lines * 0.35 * smoothstep(2.2, 0.5, abs(p.x));
+    fragColor = vec4(col * uActive, a * uActive);
+    return;
+  }
+  fragColor = drill(vec2(p.x, p.y + 1.2), t * 6.0, uColA, uColB) * uActive;
 }
 `;
 
@@ -775,30 +878,51 @@ void main() {
   float t = uTime;
   vec3 col = vec3(0.0);
   float a = 0.0;
-  int count = uVariant < 0.5 ? 3 : (uVariant < 1.5 ? 6 : 1);
-  float scale = uVariant > 1.5 ? 2.6 : 1.0;
-  for (int i = 0; i < 6; i++) {
+  int count = uVariant < 0.5 ? 3 : (uVariant < 1.5 ? 5 : 1);
+  float scale = uVariant > 1.5 ? 1.7 : 1.0;
+  for (int i = 0; i < 5; i++) {
     if (i >= count) break;
     float fi = float(i);
-    float spread = count == 1 ? 0.0 : (fi / float(count - 1) - 0.5) * 1.6;
-    vec2 q = rot(-spread * 0.6) * p / scale;
-    float len = mix(2.4, 3.6, hash1(fi + uSeed)) * smoothstep(0.0, 1.5, t - fi * 0.1);
+    float spread = count == 1 ? 0.0 : (fi / float(count - 1) - 0.5) * 1.5;
+    vec2 q = rot(-spread * 0.7) * p / scale;
+    float len = mix(2.2, 3.2, hash1(fi + uSeed)) * smoothstep(0.0, 1.4, t - fi * 0.12) * (count == 1 ? 0.55 : 1.0);
+    if (len < 0.05) continue;
     float s = q.x;
-    float wave = sin(s * 3.0 - t * 6.0 + fi * 2.0) * 0.22 * smoothstep(0.0, 1.0, s);
-    float w = 0.12 * smoothstep(-0.1, 0.4, s) * mix(1.0, 0.6, s / max(len, 0.01));
+    float ph = t * 5.0 + fi * 2.0;
+    float amp = 0.24 * smoothstep(0.0, 1.0, s) * smoothstep(len + 0.2, len - 0.6, s);
+    float wave = sin(s * 2.8 - ph) * amp;
+    float w = 0.16 * smoothstep(-0.1, 0.35, s) * mix(1.0, 0.75, s / max(len, 0.01));
     float dy = q.y - wave;
-    float body = smoothstep(w, w - 0.02, abs(dy)) * step(0.0, s) * step(s, len);
-    vec2 hp = vec2(s - len, dy);
-    float head = smoothstep(0.02, -0.02, length(hp * vec2(0.8, 1.2)) - 0.16) * step(0.001, len);
-    float m = max(body, head);
-    if (m <= 0.0) continue;
-    float scales = 0.5 + 0.5 * sin(s * 40.0) * sin(dy * 60.0);
-    float belly = smoothstep(0.0, -w, dy);
-    vec3 sc = mix(uColA, uColB, belly) * (0.65 + 0.35 * scales);
-    vec2 eyeP = vec2(hp.x - 0.05, abs(hp.y) - 0.07);
-    float eye = smoothstep(0.035, 0.02, length(eyeP)) * head;
-    sc = mix(sc, vec3(1.0, 0.85, 0.1), eye);
-    sc = mix(sc, vec3(0.0), eye * smoothstep(0.012, 0.0, abs(eyeP.x)));
+    float bodyD = max(abs(dy) - w, max(-s, s - len));
+    // Wedge-shaped head, aimed along the body's last heading.
+    float headY = sin(len * 2.8 - ph) * 0.24 * smoothstep(0.0, 1.0, len) * 0.4;
+    vec2 hp = vec2(s - len, q.y - headY);
+    float headD = length(hp / vec2(0.34, 0.2 - hp.x * 0.12)) - 1.0;
+    headD *= 0.18;
+    float d = min(bodyD, headD);
+    float m = smoothstep(0.012, -0.012, d);
+    // Forked tongue flicking in and out.
+    float flick = step(0.5, fract(t * 1.6 + fi * 0.37));
+    vec2 tp = hp - vec2(0.33, 0.0);
+    float tongue = flick * step(0.0, tp.x) * step(tp.x, 0.28) *
+      smoothstep(0.018, 0.0, abs(abs(tp.y) - max(tp.x - 0.18, 0.0) * 0.6));
+    if (m <= 0.0 && tongue <= 0.0) continue;
+    // Diamond scale pattern along the back, pale belly.
+    vec2 sg = vec2(s * 9.0, dy / max(w, 0.01) * 2.0);
+    float diamond = smoothstep(0.55, 0.45, abs(fract(sg.x + sg.y * 0.5) - 0.5) + abs(fract(sg.x - sg.y * 0.5) - 0.5));
+    float belly = smoothstep(0.1, -0.7, dy / max(w, 0.01));
+    vec3 sc = mix(uColA, uColA * 0.55, diamond * 0.55);
+    sc = mix(sc, uColB, belly * 0.8 * step(bodyD, headD));
+    sc *= 0.65 + 0.35 * cos(dy / max(w, 0.01) * 1.4);
+    // Head: eyes with slit pupils.
+    vec2 eyeP = vec2(hp.x - 0.06, abs(hp.y) - 0.1);
+    float eye = smoothstep(0.045, 0.03, length(eyeP)) * step(headD, bodyD);
+    sc = mix(sc, vec3(1.0, 0.82, 0.1), eye);
+    sc = mix(sc, vec3(0.0), eye * smoothstep(0.012, 0.004, abs(eyeP.x)));
+    // Ink outline.
+    sc = mix(sc, vec3(0.03), smoothstep(-0.03, -0.006, d) * m);
+    sc = mix(sc, vec3(0.85, 0.08, 0.1), tongue * (1.0 - m));
+    m = max(m, tongue);
     col = mix(col, sc, m);
     a = max(a, m);
   }

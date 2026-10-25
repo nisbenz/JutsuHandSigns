@@ -1,5 +1,6 @@
 import * as LAB from "./shaders/lab.js";
 import * as EXTRA from "./shaders/extra.js";
+import * as SIG from "./shaders/signature.js";
 
 // WebGL2 cast-effect renderer, ported from fx-lab/main.js and generalised:
 // any number of effect layers, each drawn once per anchor instance (so a
@@ -31,6 +32,10 @@ const FX_SOURCES = {
   threads: EXTRA.THREADS_FRAG_SRC,
   snakes: EXTRA.SNAKES_FRAG_SRC,
   facemark: EXTRA.FACEMARK_FRAG_SRC,
+  copy: SIG.CLONE_FRAG_SRC,
+  mind: SIG.MIND_FRAG_SRC,
+  sword: SIG.SWORD_FRAG_SRC,
+  summon: SIG.SUMMON_FRAG_SRC,
 };
 
 // Wraps a fragment shader's main() so every effect can be recolored, which
