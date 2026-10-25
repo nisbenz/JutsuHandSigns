@@ -214,19 +214,20 @@
     "name": "Kakashi Hatake",
     "file": "kakashi-hatake.jpeg",
     "traits": {
-      "detected": false,
-      "faceRatio": 0.78,
-      "eyeSpacingRatio": 0.42,
-      "eyeSizeRatio": 0.23,
+      "detected": true,
+      "manual": true,
+      "faceRatio": null,
+      "eyeSpacingRatio": null,
+      "eyeSizeRatio": null,
       "skin": {
-        "r": 107.45074286528664,
-        "g": 113.28198002399022,
-        "b": 105.17435659909027
+        "r": 232,
+        "g": 203,
+        "b": 178
       },
       "hair": {
-        "r": 210.6960015447227,
-        "g": 217.01538781451444,
-        "b": 212.70375486439116
+        "r": 196,
+        "g": 200,
+        "b": 206
       }
     }
   },
@@ -361,19 +362,20 @@
     "name": "Obito Uchiha",
     "file": "obito-uchiha.jpeg",
     "traits": {
-      "detected": false,
-      "faceRatio": 0.78,
-      "eyeSpacingRatio": 0.42,
-      "eyeSizeRatio": 0.23,
+      "detected": true,
+      "manual": true,
+      "faceRatio": null,
+      "eyeSpacingRatio": null,
+      "eyeSizeRatio": null,
       "skin": {
-        "r": 145.5887534109357,
-        "g": 143.6923767745501,
-        "b": 156.95140064246485
+        "r": 228,
+        "g": 198,
+        "b": 172
       },
       "hair": {
-        "r": 243.86895012782182,
-        "g": 244.23428224793102,
-        "b": 244.32052948567963
+        "r": 40,
+        "g": 36,
+        "b": 42
       }
     }
   },

@@ -36,7 +36,8 @@ FOREHEAD_TOP = 10
 CHIN_BOTTOM = 152
 JAW_LEFT = 234
 JAW_RIGHT = 454
-SKIN_SAMPLE_POINTS = [50, 280, 152]
+# Both cheeks (inner and outer) — the chin often carries a beard or shadow.
+SKIN_SAMPLE_POINTS = [50, 280, 101, 330]
 
 
 def _avg_point(landmarks, indices, w, h):
@@ -123,9 +124,11 @@ def extract_traits(bgr_image):
     ]
     skin = _average_color_at(bgr_image, skin_points) or {"r": 200, "g": 170, "b": 150}
 
-    top_x = landmarks[JAW_LEFT].x * w
-    top_y = max(0, landmarks[FOREHEAD_TOP].y * h - face_h * 0.6)
-    hair = _average_color_in_box(bgr_image, top_x, top_y, face_w, face_h * 0.35) or {
+    # Hair: a band just above the forehead landmark, over the middle half of
+    # the face. Reaching higher or wider samples the wall behind the head.
+    top_x = landmarks[JAW_LEFT].x * w + face_w * 0.25
+    top_y = max(0, landmarks[FOREHEAD_TOP].y * h - face_h * 0.22)
+    hair = _average_color_in_box(bgr_image, top_x, top_y, face_w * 0.5, face_h * 0.15) or {
         "r": 60,
         "g": 50,
         "b": 50,

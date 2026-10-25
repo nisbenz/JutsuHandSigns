@@ -15,7 +15,9 @@ const ENTRIES = [
 
 export default function FxGallery() {
   const params = new URLSearchParams(window.location.search);
-  const mock = params.has("mock");
+  // ?fxlab&mock[=zoom][&head=y]: zoom > 1 frames the mock person closer.
+  const mock = params.has("mock") ? Number(params.get("mock")) || true : false;
+  const mockHeadY = params.has("head") ? Number(params.get("head")) : undefined;
   const initial = ENTRIES.find((e) => e.skill === params.get("skill") && e.character === (params.get("character") || ""));
   const [entry, setEntry] = useState(initial || ENTRIES.find((e) => e.skill === "Rasengan"));
   const [restart, setRestart] = useState(0);
@@ -42,7 +44,7 @@ export default function FxGallery() {
   return (
     <div className="fx-gallery">
       {(mock || stream) && (
-        <JutsuFx skill={entry.skill} character={entry.character} stream={stream} mock={mock} restartKey={restart} />
+        <JutsuFx skill={entry.skill} character={entry.character} stream={stream} mock={mock} mockHeadY={mockHeadY} restartKey={restart} />
       )}
       <div className="fx-gallery-panel">
         <p className="kicker">Jutsu FX gallery {mock ? "(mock tracking)" : ""}</p>

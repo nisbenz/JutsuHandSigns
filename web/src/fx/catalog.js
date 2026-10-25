@@ -15,6 +15,8 @@
 //   tint / tintMix - recolor for the FX-lab shaders, which have baked colors
 //   offset  - [x, y] nudge in anchor units (+y is up)
 //   gain    - brightness multiplier (glow effects that would wash out the face)
+//   faceGuard - how much glow is dimmed over the face (0..1); defaults to
+//             0.75 for body anchors, 0 otherwise
 // bloom (per skill) overrides the glow strength; eye-only jutsu use 0 so the
 // iris doesn't smear.
 
@@ -150,7 +152,7 @@ export const SKILL_FX = {
     bloom: 0.5,
   },
   "Mind Transmission Technique": {
-    layers: [{ fx: "mind", anchor: "face", scale: 0.8, variant: 2, colA: [0.3, 0.7, 1.0], colB: [0.85, 0.97, 1.0] }],
+    layers: [{ fx: "mind", anchor: "face", scale: 0.8, variant: 2, colA: [0.3, 0.7, 1.0], colB: [0.85, 0.97, 1.0], faceGuard: 0.6 }],
   },
 
   // Jiraiya / Minato / Naruto defaults
@@ -246,7 +248,7 @@ export const SKILL_FX = {
     // Green chakra cloak plus the gates' signature steam pouring off the body.
     layers: [
       { fx: "aura", anchor: "torso", scale: 0.9, variant: 0, colA: [0.15, 0.95, 0.4], colB: [0.85, 1.0, 0.7], gain: 0.8 },
-      { fx: "steam", anchor: "hands", scale: 1.6, gain: 1.8 },
+      { fx: "steam", anchor: "hands", scale: 1.6, gain: 1.8, faceGuard: 0.75 },
       { fx: "steam", anchor: "torso", scale: 0.9, offset: [0, 0.4], gain: 1.6 },
     ],
   },

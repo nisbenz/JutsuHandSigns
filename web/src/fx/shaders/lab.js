@@ -988,8 +988,10 @@ void main() {
   const float CYCLE = 5.0;
   float t = mod(uTime, CYCLE);
 
-  // Clone stands beside the hand, not on top of it.
-  vec2 cloneCenter = vec2(1.6, 0.4);
+  // Clone stands beside the hand, not on top of it - on the side facing the
+  // middle of the frame, so a hand near the edge doesn't push it off-screen.
+  float side = uHandPos.x > uResolution.x * 0.5 ? -1.0 : 1.0;
+  vec2 cloneCenter = vec2(1.6 * side, 0.4);
   vec2 pc = p - cloneCenter;
   float formAmt = smoothstep(0.0, FORM_END, t);
   float cloneScale = max(mix(0.12, 0.42, formAmt), 0.001);

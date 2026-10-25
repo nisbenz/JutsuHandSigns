@@ -46,12 +46,22 @@ function withTint(src) {
 uniform vec3 uTint;
 uniform float uTintMix;
 uniform float uGain;
+uniform vec4 uFaceGuard; // face ellipse: centre px, radii px
+uniform float uFaceGuardAmt;
 void main() {
   fxMain();
   fragColor.rgb *= uGain;
   if (uTintMix > 0.0) {
     float l = dot(fragColor.rgb, vec3(0.299, 0.587, 0.114));
     fragColor.rgb = mix(fragColor.rgb, uTint * l * 1.7, uTintMix);
+  }
+  // Fade glow (alpha ~0) and haze over the face; solid parts are untouched.
+  // Premultiplied, so scaling rgb and alpha together lets the face through
+  // instead of leaving a dark patch.
+  if (uFaceGuardAmt > 0.0) {
+    vec2 q = (gl_FragCoord.xy - uFaceGuard.xy) / max(uFaceGuard.zw, vec2(1.0));
+    float m = 1.0 - smoothstep(0.55, 1.0, length(q));
+    fragColor *= 1.0 - m * uFaceGuardAmt * (1.0 - fragColor.a);
   }
 }
 `;
@@ -143,6 +153,9 @@ const BLOOM_ITERATIONS = 3;
 const BLOOM_THRESHOLD = 0.45;
 const BLOOM_STRENGTH = 1.3;
 const FIST_SCALE = 0.85;
+// How much body-anchored glow is dimmed over the face (see withTint).
+const FACE_GUARD = 0.75;
+const BODY_ANCHORS = ["torso", "back", "ground"];
 
 const lerp = (a, b, k) => a + (b - a) * k;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -321,7 +334,7 @@ export class FxRenderer {
       const tip = this.toPx(lm[12].x, lm[12].y);
       // Clamped so a hand right up against the lens doesn't blow effects
       // up past the frame, and a far-away hand still shows something.
-      const scale = clamp(Math.hypot(tip.x - wrist.x, tip.y - wrist.y) * 1.6, minDim * 0.12, minDim * 0.6);
+      const scale = clamp(Math.hypot(tip.x - wrist.x, tip.y - wrist.y) * 1.6, minDim * 0.12, minDim * 0.4);
       let dx = palm.x - wrist.x;
       let dy = palm.y - wrist.y;
       const dl = Math.hypot(dx, dy) || 1;
@@ -433,7 +446,7 @@ export class FxRenderer {
         // Wings root at the shoulder line, not the neck, so they don't glow
         // over the face.
         by: clamp(sy - span * 0.1, h * 0.2, h * 0.92),
-        scale: clamp(span * 1.8, minDim * 0.35, minDim * 0.85),
+        scale: clamp(span * 1.8, minDim * 0.35, minDim * 0.75),
       };
       if (!S.body) S.body = { ...target, active: 0 };
       const b = S.body;
@@ -467,7 +480,7 @@ export class FxRenderer {
       }
       if (face) {
         const minDim = Math.min(w, h);
-        const s = clamp(face.width * 2.4, minDim * 0.35, minDim * 0.85);
+        const s = clamp(face.width * 2.4, minDim * 0.35, minDim * 0.75);
         const y = face.mid.y - face.width * (which === "back" ? 1.6 : 2.0);
         return { x: face.mid.x, y: clamp(y, h * 0.12, h * 0.85), scale: s, active: face.active };
       }
@@ -497,7 +510,7 @@ export class FxRenderer {
           out = [{
             x: (a.x + b.x) / 2,
             y: (a.y + b.y) / 2,
-            scale: clamp(dist * 0.6, (a.scale + b.scale) / 2, Math.min(w, h) * 0.6),
+            scale: clamp(dist * 0.6, (a.scale + b.scale) / 2, Math.min(w, h) * 0.5),
             dirX: 0,
             dirY: 1,
             active: Math.min(a.active, b.active),
@@ -539,7 +552,7 @@ export class FxRenderer {
     for (const layer of spec.layers) {
       if (this.instances(layer).length) continue;
       if (["hands", "hand", "between"].includes(layer.anchor) || layer.fx === "threads") need.add("hands");
-      else if (["torso", "back", "ground"].includes(layer.anchor)) need.add("body");
+      else if (BODY_ANCHORS.includes(layer.anchor)) need.add("body");
       else if (["face", "eyes"].includes(layer.anchor)) need.add("face");
     }
     // Chakra threads are screen-anchored but hang off the fingertips.
@@ -612,6 +625,7 @@ export class FxRenderer {
     this.set(steam, "uActive", inst.active);
     this.set(steam, "uTintMix", 0);
     this.set(steam, "uGain", 1);
+    this.set(steam, "uFaceGuardAmt", 0);
     this.drawQuad();
   }
 
@@ -737,6 +751,17 @@ export class FxRenderer {
     this.set(prog, "uTint", ...(layer.tint || [1, 1, 1]));
     this.set(prog, "uTintMix", layer.tintMix ?? 0);
     this.set(prog, "uGain", layer.gain ?? 1);
+    // Body glows (auras, wings, Susanoo, steam) are big enough to sit over
+    // the head and wash the face out; effects aimed at the face opt out.
+    const guard = layer.faceGuard ?? (BODY_ANCHORS.includes(layer.anchor) ? FACE_GUARD : 0);
+    const sf = this.smooth.face;
+    if (guard > 0 && sf && sf.active > 0.05) {
+      // face.mid is the bridge of the nose; the face extends more below it.
+      this.set(prog, "uFaceGuard", sf.mid.x, sf.mid.y - sf.width * 0.15, sf.width * 0.62, sf.width * 0.9);
+      this.set(prog, "uFaceGuardAmt", guard * sf.active);
+    } else {
+      this.set(prog, "uFaceGuardAmt", 0);
+    }
     const vt = this.u(prog, "uVideoTex");
     if (vt !== null) gl.uniform1i(vt, 0);
     this.set(prog, "uCanvasSize", w, h);

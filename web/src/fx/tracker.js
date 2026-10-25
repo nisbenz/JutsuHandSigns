@@ -105,10 +105,18 @@ export class Tracker {
 
 // Synthetic tracking for the effect gallery (?fxlab&mock): two hands
 // circling, a face and a body, so every effect can be previewed without a
-// camera.
+// camera. `zoom` > 1 frames the person closer, like a seated webcam user
+// (head scaled about MOCK_HEAD and moved to `headY`).
+export const MOCK_HEAD = { x: 0.5, y: 0.32 };
+
+export function mockFraming(zoom = 1, headY = MOCK_HEAD.y) {
+  return (x, y) => ({ x: 0.5 + (x - MOCK_HEAD.x) * zoom, y: headY + (y - MOCK_HEAD.y) * zoom });
+}
+
 export class MockTracker {
-  constructor() {
+  constructor(zoom = 1, headY = MOCK_HEAD.y) {
     this.start = performance.now();
+    this.frame = mockFraming(zoom, headY);
   }
 
   update() {
@@ -139,13 +147,14 @@ export class MockTracker {
     pose[12] = { x: 0.38, y: 0.55, visibility: 1 };
     pose[23] = { x: 0.58, y: 0.98, visibility: 0.3 };
     pose[24] = { x: 0.42, y: 0.98, visibility: 0.3 };
+    const map = (lm) => lm.map((p) => ({ ...p, ...this.frame(p.x, p.y) }));
     return {
       hands: [
-        { lm: hand(0.3, 0.55, 0), label: "Left" },
-        { lm: hand(0.7, 0.55, 2), label: "Right" },
+        { lm: map(hand(0.3, 0.55, 0)), label: "Left" },
+        { lm: map(hand(0.7, 0.55, 2)), label: "Right" },
       ],
-      pose,
-      face,
+      pose: map(pose),
+      face: map(face),
     };
   }
 

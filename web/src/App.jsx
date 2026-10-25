@@ -81,7 +81,8 @@ export default function App() {
         setResult(msg.character);
         setStage(STAGE.RESULT);
       } else {
-        setError("The server couldn't process that frame. Try again.");
+        // A bad frame isn't fatal: go back and run the countdown again.
+        console.warn("[match] server couldn't process the frame", msg);
         setStage(STAGE.CAMERA);
       }
     };
