@@ -12,9 +12,6 @@ CAST_DURATION = 2.5      # seconds the finished jutsu effect plays for
 SEQUENCE_LENGTH = 4
 
 BOX_COLOR = (60, 220, 255)
-MISS_COLOR = (60, 60, 255)
-TEXT_COLOR = (255, 255, 255)
-BANNER_BG = (10, 12, 18)
 
 
 class JutsuSession:
@@ -119,8 +116,6 @@ class JutsuSession:
         return canvas, state
 
     def _draw_play_hud(self, canvas, detection, target_sign):
-        h, w = canvas.shape[:2]
-
         if detection is not None:
             x1, y1, x2, y2 = (int(v) for v in detection["bbox"])
             correct = detection["en"] == target_sign
@@ -130,10 +125,5 @@ class JutsuSession:
             cv2.putText(canvas, label, (x1, max(20, y1 - 12)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2, cv2.LINE_AA)
 
-        cv2.rectangle(canvas, (0, 0), (w, 64), BANNER_BG, -1)
-        label = f"{self.idx + 1}/{len(self.sequence)}  Make: {target_sign}"
-        cv2.putText(canvas, label, (20, 42), cv2.FONT_HERSHEY_SIMPLEX, 1.0, TEXT_COLOR, 2, cv2.LINE_AA)
-
-        if self.misses:
-            cv2.putText(canvas, f"misses: {self.misses}", (w - 170, 42),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.65, MISS_COLOR, 2, cv2.LINE_AA)
+        # The sign / progress HUD is drawn by the frontend (Storm panel);
+        # only the detection box belongs on the frame itself.

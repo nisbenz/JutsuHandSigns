@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SKILLS, DEFAULT_SKILLS } from "./data/skills";
 import HandSignIcon from "./components/HandSignIcon";
+import JutsuCast from "./components/JutsuCast";
+import CharacterPicker from "./components/CharacterPicker";
+import { MuteToggle, Prompt, StormPanel, StormRow, StormSky, Strip } from "./components/Storm";
+import { sfx } from "./sfx";
+import { preloadVfx, vfxFor } from "./vfx/registry";
 import "./App.css";
 
 const STAGE = {
@@ -62,6 +67,11 @@ export default function App() {
   const [jutsuState, setJutsuState] = useState(null);
   const [voiceSrc, setVoiceSrc] = useState(null);
   const [castCount, setCastCount] = useState(0);
+  // Set when the cast is rendered client-side in 3D (see JutsuCast) rather
+  // than by the backend; holds the scored power for the effect.
+  const [clientCast, setClientCast] = useState(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [trainedCount, setTrainedCount] = useState(0);
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -69,6 +79,8 @@ export default function App() {
   const countdownTimerRef = useRef(null);
   const jutsuWsRef = useRef(null);
   const jutsuIntervalRef = useRef(null);
+  const stageRef = useRef(stage);
+  stageRef.current = stage;
 
   const connectWs = useCallback(() => {
     const ws = new WebSocket(WS_URL);
@@ -87,6 +99,8 @@ export default function App() {
       if (msg.status === "no_face") {
         setStage(STAGE.NO_FACE);
       } else if (msg.status === "ok") {
+        // A manual pick may have landed while this scan was in flight.
+        if (stageRef.current !== STAGE.ANALYZING) return;
         setResult(msg.character);
         setStage(STAGE.RESULT);
       } else {
@@ -158,7 +172,7 @@ export default function App() {
   // 5-second "hold still" countdown that runs whenever we're camera-ready,
   // and restarts automatically after a no-face result.
   useEffect(() => {
-    if (stage !== STAGE.CAMERA) return;
+    if (stage !== STAGE.CAMERA || pickerOpen) return;
 
     let cancelled = false;
     const video = videoRef.current;
@@ -195,7 +209,7 @@ export default function App() {
       cancelled = true;
       clearInterval(countdownTimerRef.current);
     };
-  }, [stage, capture]);
+  }, [stage, capture, pickerOpen]);
 
   // After "no face detected," automatically return to the camera stage to
   // retry the countdown.
@@ -212,6 +226,8 @@ export default function App() {
     let cancelled = false;
     setJutsuFrame(null);
     setJutsuState(null);
+    setClientCast(null);
+    const hasClientVfx = Boolean(vfxFor(jutsuSkill));
 
     const ws = new WebSocket(JUTSU_WS_URL);
     jutsuWsRef.current = ws;
@@ -234,10 +250,18 @@ export default function App() {
     ws.onmessage = (event) => {
       if (cancelled) return;
       const msg = JSON.parse(event.data);
-      if (msg.status === "frame") {
-        setJutsuFrame(msg.image);
+      if (msg.status !== "frame") return;
+      if (msg.state.stage === "cast" && hasClientVfx) {
+        // The backend's job ends at "sequence complete"; the cast itself
+        // runs in the browser at full frame rate.
+        clearInterval(jutsuIntervalRef.current);
+        ws.close();
         setJutsuState(msg.state);
+        setClientCast({ power: msg.state.power ?? 1 });
+        return;
       }
+      setJutsuFrame(msg.image);
+      setJutsuState(msg.state);
     };
     ws.onerror = () => {
       if (!cancelled) setError("Couldn't reach the jutsu training server.");
@@ -277,12 +301,35 @@ export default function App() {
     probe();
   }, [jutsuState?.stage === "cast", jutsuSkill]);
 
+  // UI sounds tied to game state rather than to a button.
+  useEffect(() => {
+    if (stage === STAGE.CAMERA && !pickerOpen && countdown > 0) sfx.tick();
+  }, [stage, pickerOpen, countdown]);
+
+  const sealIdx = jutsuState?.stage === "play" ? jutsuState.idx : null;
+  const prevSealIdx = useRef(null);
+  useEffect(() => {
+    if (sealIdx != null && prevSealIdx.current != null && sealIdx > prevSealIdx.current) sfx.seal(sealIdx - 1);
+    prevSealIdx.current = sealIdx;
+  }, [sealIdx]);
+
+  const casting = jutsuState?.stage === "cast";
+  useEffect(() => {
+    if (casting) sfx.taiko();
+  }, [casting]);
+
   const handleSelectJutsu = useCallback((skill) => {
+    preloadVfx(skill, result?.id);
     setJutsuSkill(skill);
     setStage(STAGE.JUTSU);
+  }, [result]);
+
+  const handleCastDone = useCallback(() => {
+    setJutsuState((s) => (s ? { ...s, stage: "done" } : s));
   }, []);
 
   const handleJutsuDone = useCallback(() => {
+    setTrainedCount((n) => n + 1);
     setJutsuSkill(null);
     setStage(STAGE.RESULT);
   }, []);
@@ -296,6 +343,14 @@ export default function App() {
     setStage(STAGE.CONNECTING);
   }, []);
 
+  const handlePickCharacter = useCallback((character) => {
+    setPickerOpen(false);
+    setResult({ ...character, picked: true });
+    setStage(STAGE.RESULT);
+  }, []);
+
+  const handleClosePicker = useCallback(() => setPickerOpen(false), []);
+
   const handleRetry = useCallback(() => {
     setResult(null);
     setStage(STAGE.CAMERA);
@@ -303,9 +358,11 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="app-shell center">
-        <p className="error-text">{error}</p>
-      </div>
+      <StormSky className="app-shell">
+        <StormPanel title="Interrupted" className="message-panel">
+          <p className="storm-text error-text">{error}</p>
+        </StormPanel>
+      </StormSky>
     );
   }
 
@@ -326,9 +383,11 @@ export default function App() {
 
   if (stage === STAGE.CONNECTING) {
     return (
-      <div className="app-shell center dark-bg">
-        <p>Connecting to the matching server…</p>
-      </div>
+      <StormSky className="app-shell">
+        <StormPanel title="Loading" className="message-panel">
+          <p className="storm-text">Connecting to the matching server…</p>
+        </StormPanel>
+      </StormSky>
     );
   }
 
@@ -347,16 +406,26 @@ export default function App() {
 
       {stage === STAGE.JUTSU && (
         <div className="jutsu-screen">
-          {jutsuFrame ? (
+          {clientCast ? (
+            jutsuState?.stage === "cast" && (
+              <JutsuCast
+                video={videoRef.current}
+                skill={jutsuSkill}
+                character={result?.id}
+                power={clientCast.power}
+                onDone={handleCastDone}
+              />
+            )
+          ) : jutsuFrame ? (
             <img className="jutsu-frame" src={jutsuFrame} alt="" />
           ) : (
             <div className="jutsu-loading">
-              <div className="countdown-ring small" />
-              <p className="hud-hint">Summoning {jutsuSkill}…</p>
+              <div className="chakra-medallion small" />
+              <Strip label={`Summoning ${jutsuSkill}…`} />
             </div>
           )}
 
-          {jutsuState?.stage === "cast" && jutsuFxVideo(jutsuSkill) && (
+          {!clientCast && jutsuState?.stage === "cast" && jutsuFxVideo(jutsuSkill) && (
             <video
               className="jutsu-fx-overlay"
               src={jutsuFxVideo(jutsuSkill)}
@@ -372,12 +441,9 @@ export default function App() {
           )}
 
           {jutsuState?.stage === "play" && (
-            <div className="jutsu-target-card">
-              <p className="kicker">
-                Sign {jutsuState.idx + 1} of {jutsuState.total}
-              </p>
+            <StormPanel title={`Seal ${jutsuState.idx + 1} of ${jutsuState.total}`} className="jutsu-target-card">
               <HandSignIcon sign={jutsuState.target_sign} size={88} />
-              <h1 className="jutsu-target-name">{jutsuState.target_sign}</h1>
+              <h1 className="storm-name jutsu-target-name">{jutsuState.target_sign}</h1>
               <div className="jutsu-progress-dots">
                 {jutsuState.sequence.map((_sign, i) => (
                   <span
@@ -386,29 +452,29 @@ export default function App() {
                   />
                 ))}
               </div>
-              <div className="jutsu-hold-bar">
+              <div className="chakra-gauge">
                 <div
-                  className="jutsu-hold-fill"
+                  className="chakra-gauge-fill"
                   style={{ width: `${(jutsuState.hold_progress ?? 0) * 100}%` }}
                 />
               </div>
-              <p className="hint jutsu-detected-hint">
+              <p className="storm-sub">
                 {jutsuState.detected_sign
                   ? `Detected: ${jutsuState.detected_sign}`
                   : "Form the sign with both hands"}
               </p>
-            </div>
+            </StormPanel>
           )}
 
           {jutsuState?.stage === "done" && (
-            <div className="result-card jutsu-result-card">
-              <p className="kicker">{jutsuState.rating}</p>
-              <h1 className="result-name">{jutsuSkill}</h1>
-              <p className="hint">Power: {Math.round((jutsuState.power ?? 0) * 100)}%</p>
-              <button className="begin-btn" onClick={handleJutsuDone}>
-                Back to Results
-              </button>
-            </div>
+            <>
+              <StormPanel title={jutsuState.rating} className="jutsu-result-card" sound="reveal">
+                <StormRow label={jutsuSkill} value={`Power ${Math.round((jutsuState.power ?? 0) * 100)}%`} />
+              </StormPanel>
+              <div className="prompt-bar">
+                <Prompt onClick={handleJutsuDone}>Next</Prompt>
+              </div>
+            </>
           )}
         </div>
       )}
@@ -423,52 +489,59 @@ export default function App() {
 
           {stage === STAGE.CAMERA && (
             <div className="hud-center">
-              <div className="countdown-ring">{countdown}</div>
-              <p className="hud-hint">Hold still, reading your chakra…</p>
+              <div className="chakra-medallion">{countdown}</div>
+              <Strip label="Hold still, reading your chakra…" />
             </div>
           )}
           {stage === STAGE.ANALYZING && (
             <div className="hud-center">
-              <p className="hud-hint">Analyzing…</p>
+              <Strip label="Analyzing…" />
             </div>
           )}
           {stage === STAGE.NO_FACE && (
             <div className="hud-center">
-              <p className="hud-hint warn">No face detected — center yourself in frame.</p>
+              <Strip className="warn" label="No face detected — center yourself in frame" />
             </div>
           )}
+          <div className="prompt-bar">
+            <Prompt onClick={() => setPickerOpen(true)}>Choose character</Prompt>
+          </div>
         </div>
       )}
 
       {stage === STAGE.RESULT && result && (
-        <div className="result-overlay">
+        <StormSky className="result-overlay">
           <img
             className="result-character"
             src={`${import.meta.env.BASE_URL}characters/${result.file}`}
             alt={result.name}
           />
-          <div className="result-card">
-            <p className="kicker">You are most like</p>
-            <h1 className="result-name">{result.name}</h1>
-            <p className="hint">Tap a technique below to train it</p>
-            <div className="skills-row">
+          <StormPanel title={result.picked ? "You chose" : "Your shinobi"} className="result-panel" sound="reveal">
+            <h1 className="storm-name">{result.name}</h1>
+            <p className="storm-sub">Choose a technique to train</p>
+            <div className="storm-rows">
               {skills.map((skill) => (
-                <button
-                  className="skill-tag skill-tag-btn"
+                <StormRow
                   key={skill}
+                  label={skill}
+                  badge={vfxFor(skill) ? "3D" : null}
+                  value="Train ›"
                   onClick={() => handleSelectJutsu(skill)}
-                >
-                  <span>{skill}</span>
-                  <span className="skill-tag-arrow">Train →</span>
-                </button>
+                />
               ))}
             </div>
-            <button className="begin-btn" onClick={handleRetry}>
-              Try Again
-            </button>
+          </StormPanel>
+          <Strip className="result-strip" label="Jutsu trained" value={trainedCount} />
+          <div className="prompt-bar">
+            <Prompt back onClick={handleRetry}>Scan again</Prompt>
+            <Prompt onClick={() => setPickerOpen(true)}>Choose character</Prompt>
           </div>
-        </div>
+        </StormSky>
       )}
+
+      <MuteToggle />
+
+      {pickerOpen && <CharacterPicker onPick={handlePickCharacter} onClose={handleClosePicker} />}
     </div>
   );
 }

@@ -1,3 +1,22 @@
+/* Ultimate Ninja Storm–style menus: purple title bars, cream parchment
+   panels in a lavender frame, gold swirl clouds, dark stat strips and
+   text prompts. Components live in components/Storm.jsx. */
+
+:root {
+  --ink: #2a2320;
+  --ink-soft: #6b5a3e;
+  --purple: #3f2f5e;
+  --purple-hi: #5b4884;
+  --purple-deep: #2a1f40;
+  --frame: #d9d4e2;
+  --frame-dark: #8e86a1;
+  --parchment: #efe6cb;
+  --gold: #b8a36c;
+  --gold-light: #e8d7a6;
+  --accent: #e0901f;
+  --chakra: #2f9be0;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -9,63 +28,283 @@ html, body, #root {
 }
 
 body {
-  background: #0a0c12;
-  color: #f4ede1;
-  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #120e18;
+  color: #fff;
+  font-family: "Philosopher", "Segoe UI", system-ui, sans-serif;
 }
 
-/* ---------- shared ---------- */
+button {
+  font-family: inherit;
+}
 
-.app-shell {
-  min-height: 100vh;
+/* ---------- storm kit ---------- */
+
+.storm-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
+  padding: 6px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, var(--frame), #aaa2bc);
+  box-shadow: 0 0 0 2px #5d5275, 0 14px 34px rgba(0, 0, 0, 0.45);
+  animation: panel-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.storm-panel-title {
+  position: relative;
+  flex-shrink: 0;
+  height: 46px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-  gap: 24px;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(180deg, var(--purple-hi) 0%, var(--purple) 55%, #34264f 100%);
+  border: 2px solid var(--purple-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -3px 6px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
-.dark-bg {
-  background: #0a0c12;
+.storm-panel-title h2 {
+  position: relative;
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3ead6;
+  letter-spacing: 0.02em;
+  text-shadow: 0 2px 0 #1d1430;
 }
 
-.center {
+.storm-panel-trim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.storm-panel-body {
+  position: relative;
+  min-height: 0;
+  margin-top: 6px;
+  padding: 18px 18px 20px;
+  border-radius: 4px 4px 10px 10px;
+  background: radial-gradient(ellipse at 50% 25%, #f9f4e3, var(--parchment) 65%, #e2d6b4);
+  border: 2px solid var(--frame-dark);
+  box-shadow: inset 0 0 0 3px #f6f0de, inset 0 0 22px rgba(150, 130, 80, 0.28);
+  color: var(--ink);
+}
+
+.storm-panel-watermark {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 60%;
+  height: 70%;
+  pointer-events: none;
+}
+
+.storm-panel-body > :not(.storm-panel-watermark) {
+  position: relative;
+}
+
+.storm-name {
+  margin: 0 0 2px;
+  font-size: clamp(1.6rem, 4vw, 2.3rem);
+  font-weight: 700;
+  color: #3a2a5a;
+}
+
+.storm-sub {
+  margin: 0 0 12px;
+  font-size: 0.98rem;
+  color: var(--ink-soft);
+}
+
+.storm-text {
+  margin: 0;
+  font-size: 1.1rem;
   text-align: center;
+}
+
+.storm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.storm-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: inherit;
+  color: var(--ink);
+  text-align: left;
+  background: linear-gradient(180deg, #f7eed4, #eadcb4);
+  border: 2px solid var(--gold);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px rgba(255, 250, 235, 0.85), 0 2px 0 rgba(90, 70, 30, 0.15);
+}
+
+.storm-row.is-button {
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+.storm-row.is-button:hover,
+.storm-row.is-button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  transform: translateX(4px);
+  box-shadow: inset 0 0 0 2px rgba(255, 250, 235, 0.85), 0 0 0 3px rgba(240, 150, 40, 0.45);
+}
+
+.storm-row-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.storm-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.storm-row-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+  font-size: 1.18rem;
+  font-weight: 700;
+  border-bottom: 2px solid rgba(120, 100, 60, 0.4);
+}
+
+.storm-row-value {
+  align-self: flex-end;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.storm-badge {
+  padding: 2px 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff6e0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e7902a, #b8591a);
+  border: 1px solid #7a3a10;
+}
+
+/* Text prompts on dark strips, bottom right: "Next". */
+.prompt-bar {
+  position: absolute;
+  right: 0;
+  bottom: 24px;
+  z-index: 4;
+  display: flex;
+  gap: 2px;
+  pointer-events: auto;
+}
+
+.prompt-bar.static {
+  position: static;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.storm-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 28px 8px 40px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(90deg, rgba(10, 10, 14, 0), rgba(10, 10, 14, 0.78) 35%, rgba(10, 10, 14, 0.78));
+  text-shadow: 0 1px 2px #000;
+}
+
+.storm-prompt:hover,
+.storm-prompt:focus-visible {
+  outline: none;
+  color: var(--gold-light);
+}
+
+/* Dark stat strip: "Total number of battles ..... 2". */
+.storm-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 40px;
+  margin: 0;
+  padding: 8px 22px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, rgba(14, 12, 18, 0.85), rgba(14, 12, 18, 0.75) 70%, rgba(14, 12, 18, 0));
+  text-shadow: 0 1px 2px #000;
+}
+
+.storm-strip.warn {
+  color: #ffcf7a;
+}
+
+/* Painted menu backdrop: sky, distant rocks, cloud band. */
+.storm-sky {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* Opaque on purpose: the portraits' white backgrounds are removed with
+     mix-blend-mode: multiply, which only works against a solid backdrop. */
+  background: linear-gradient(180deg, #7aaca6 0%, #d6d8b8 38%, #eed898 62%, #d6aa50 100%);
+}
+
+.storm-sky.app-shell {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.storm-sky-rocks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cloud-band {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 100%;
+  height: min(30vh, 260px);
+  pointer-events: none;
+  filter: drop-shadow(0 -4px 10px rgba(120, 90, 30, 0.25));
+}
+
+.message-panel {
+  z-index: 3;
+  width: min(440px, 92vw);
 }
 
 .error-text {
-  max-width: 420px;
-  text-align: center;
-  color: #ff6b6b;
-}
-
-.kicker {
-  text-transform: uppercase;
-  letter-spacing: 0.25em;
-  font-size: 0.75rem;
-  color: #ff8c1a;
-  margin: 0 0 8px;
-  font-weight: 600;
-}
-
-.begin-btn {
-  padding: 14px 40px;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #ff8c1a, #ffb347);
-  color: #140a04;
-  cursor: pointer;
-  box-shadow: 0 8px 30px rgba(255, 140, 26, 0.35);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.begin-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 36px rgba(255, 140, 26, 0.45);
+  color: #9a2a1e;
 }
 
 /* ---------- onboarding ---------- */
@@ -74,7 +313,7 @@ body {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #0a0c12;
+  background: #000;
 }
 
 .intro-video {
@@ -85,7 +324,7 @@ body {
   object-fit: cover;
 }
 
-/* ---------- fullscreen camera ---------- */
+/* ---------- live camera + scan HUD ---------- */
 
 .camera-screen {
   position: fixed;
@@ -102,6 +341,10 @@ body {
   transform: scaleX(-1);
 }
 
+.video-fullscreen.hidden {
+  visibility: hidden;
+}
+
 .hud {
   position: absolute;
   inset: 0;
@@ -112,8 +355,8 @@ body {
   position: absolute;
   width: 56px;
   height: 56px;
-  border: 3px solid #ff8c1a;
-  opacity: 0.9;
+  border: 3px solid var(--gold-light);
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
 }
 
 .hud-corner.tl { top: 28px; left: 28px; border-right: none; border-bottom: none; }
@@ -126,8 +369,8 @@ body {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #ff8c1a, transparent);
-  box-shadow: 0 0 12px 2px rgba(255, 140, 26, 0.8);
+  background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+  box-shadow: 0 0 12px 2px rgba(232, 215, 166, 0.7);
   animation: scan 3s ease-in-out infinite;
 }
 
@@ -146,150 +389,103 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 26px;
 }
 
-.countdown-ring {
-  width: 110px;
-  height: 110px;
-  border-radius: 50%;
-  border: 4px solid rgba(255, 140, 26, 0.35);
-  border-top-color: #ff8c1a;
+/* Countdown medallion: purple ring, parchment face, spinning gold seal. */
+.chakra-medallion {
+  position: relative;
+  width: 120px;
+  height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2.8rem;
+  font-size: 3.2rem;
   font-weight: 700;
-  color: #fff;
-  background: rgba(10, 12, 18, 0.35);
-  animation: ring-spin 1s linear infinite;
-  text-shadow: 0 0 16px rgba(255, 140, 26, 0.8);
+  color: var(--purple);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #fbf6e6, var(--parchment) 60%, #d9c99c);
+  border: 6px solid var(--purple);
+  box-shadow: 0 0 0 3px var(--gold-light), 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.chakra-medallion::before {
+  content: "";
+  position: absolute;
+  inset: -16px;
+  border-radius: 50%;
+  border: 3px dashed rgba(232, 215, 166, 0.9);
+  animation: ring-spin 6s linear infinite;
+}
+
+.chakra-medallion.small {
+  width: 64px;
+  height: 64px;
+  border-width: 4px;
 }
 
 @keyframes ring-spin {
   to { transform: rotate(360deg); }
 }
 
-.hud-hint {
-  font-size: 1.05rem;
-  letter-spacing: 0.04em;
-  background: rgba(10, 12, 18, 0.55);
-  padding: 8px 20px;
-  border-radius: 999px;
-  margin: 0;
-}
-
-.hud-hint.warn {
-  color: #ffb347;
-}
-
-/* ---------- result: overlaid on the live camera feed ---------- */
-
-.result-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  pointer-events: none;
-}
+/* ---------- result ---------- */
 
 .result-character {
   position: absolute;
-  right: 0;
+  left: 3vw;
   bottom: 0;
-  height: 86vh;
-  max-width: 68vw;
+  z-index: 1;
+  height: 92vh;
+  max-width: 48vw;
   object-fit: contain;
-  object-position: bottom right;
-  filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 40px rgba(255, 140, 26, 0.25));
+  object-position: bottom left;
+  /* The portraits are JPEGs on white; multiply drops the white into the sky. */
+  mix-blend-mode: multiply;
   animation: result-character-in 0.5s ease-out;
 }
 
 @keyframes result-character-in {
-  from { transform: translateY(24px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: none; opacity: 1; }
 }
 
-.result-card {
-  position: relative;
-  z-index: 1;
-  pointer-events: auto;
-  width: min(420px, 92vw);
-  margin: 0 0 28px 16px;
-  text-align: left;
-  padding: 18px 20px 22px;
-  border-radius: 20px;
-  background: rgba(10, 12, 18, 0.72);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 140, 26, 0.3);
+.result-panel {
+  position: absolute;
+  top: 46%;
+  right: 7vw;
+  z-index: 3;
+  width: min(520px, 92vw);
+  transform: translateY(-50%);
+  animation: none;
 }
 
-.result-name {
-  font-size: clamp(1.8rem, 5vw, 2.6rem);
-  margin: 0 0 6px;
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6);
+.result-strip {
+  position: absolute;
+  left: 5vw;
+  bottom: 150px;
+  z-index: 3;
+  min-width: min(480px, 80vw);
 }
 
-.skills-row {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 8px;
-  margin: 10px 0 16px;
-}
-
-.skill-tag {
-  padding: 6px 16px;
-  border-radius: 999px;
-  background: rgba(255, 140, 26, 0.15);
-  border: 1px solid rgba(255, 140, 26, 0.5);
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
-  color: #f4ede1;
-}
-
-.skill-tag-btn {
-  font-family: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 140, 26, 0.18);
-  border-width: 1.5px;
-  box-shadow: 0 0 0 0 rgba(255, 140, 26, 0.4);
-  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  animation: skill-tag-pulse 2.4s ease-in-out infinite;
-}
-
-.skill-tag-arrow {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #ff8c1a;
-  letter-spacing: 0.02em;
-}
-
-.skill-tag-btn:hover {
-  background: rgba(255, 140, 26, 0.38);
-  transform: translateY(-1px) scale(1.03);
-}
-
-@keyframes skill-tag-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 140, 26, 0.35); }
-  50% { box-shadow: 0 0 0 5px rgba(255, 140, 26, 0); }
-}
-
-.hint {
-  font-size: 0.85rem;
-  opacity: 0.75;
-  margin: 0 0 4px;
+@media (max-width: 760px) {
+  .result-panel {
+    top: auto;
+    left: 16px;
+    right: 16px;
+    bottom: 96px;
+    width: auto;
+    transform: none;
+  }
+  .result-character {
+    max-width: 90vw;
+    height: 70vh;
+  }
+  .result-strip {
+    display: none;
+  }
 }
 
 /* ---------- jutsu training ---------- */
-
-.video-fullscreen.hidden {
-  visibility: hidden;
-}
 
 .jutsu-screen {
   position: absolute;
@@ -302,7 +498,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  animation: jutsu-frame-in 0.4s ease-out;
+  animation: fade-in 0.4s ease-out;
 }
 
 .jutsu-fx-overlay {
@@ -324,7 +520,7 @@ body {
   to { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
 }
 
-@keyframes jutsu-frame-in {
+@keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
@@ -336,98 +532,218 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  background: radial-gradient(circle at 50% 40%, #1a0e12 0%, #0a0c12 70%);
-  animation: jutsu-frame-in 0.3s ease-out;
+  gap: 26px;
+  background: radial-gradient(circle at 50% 40%, #2b2140 0%, #120e18 70%);
+  animation: fade-in 0.3s ease-out;
 }
 
-.countdown-ring.small {
-  width: 64px;
-  height: 64px;
-  border-width: 3px;
+.jutsu-cast {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+
+.jutsu-cast-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.jutsu-cast-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10%;
+  transform: translateX(-50%);
 }
 
 .jutsu-target-card {
   position: absolute;
-  top: 28px;
+  top: 20px;
   left: 50%;
-  transform: translateX(-50%);
-  width: min(360px, 88vw);
+  width: min(340px, 88vw);
   text-align: center;
-  padding: 16px 20px 20px;
-  border-radius: 20px;
-  background: rgba(10, 12, 18, 0.72);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 140, 26, 0.35);
-  animation: jutsu-frame-in 0.3s ease-out;
+  transform: translateX(-50%);
+  animation: none;
 }
 
 .hand-sign-icon {
   display: block;
   margin: 2px auto 6px;
-  filter: drop-shadow(0 0 10px rgba(255, 140, 26, 0.35));
 }
 
 .hand-sign-photo {
   display: block;
-  margin: 2px auto 6px;
+  margin: 2px auto 8px;
   object-fit: cover;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 140, 26, 0.4);
+  border-radius: 8px;
+  border: 2px solid var(--gold);
+  box-shadow: inset 0 0 0 2px #fff8e6;
 }
 
 .jutsu-target-name {
-  font-size: 2.2rem;
-  margin: 0 0 12px;
-  text-shadow: 0 0 20px rgba(255, 140, 26, 0.6);
+  margin-bottom: 10px;
 }
 
 .jutsu-progress-dots {
   display: flex;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 12px;
-}
-
-.jutsu-progress-dots .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.jutsu-progress-dots .dot.done {
-  background: #ff8c1a;
-}
-
-.jutsu-progress-dots .dot.active {
-  background: #ffb347;
-  box-shadow: 0 0 10px 2px rgba(255, 179, 71, 0.7);
-}
-
-.jutsu-hold-bar {
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
   margin-bottom: 10px;
 }
 
-.jutsu-hold-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #ff8c1a, #ffb347);
-  transition: width 0.1s linear;
+.jutsu-progress-dots .dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e2d6b4;
+  border: 2px solid var(--gold);
 }
 
-.jutsu-detected-hint {
-  margin: 0;
+.jutsu-progress-dots .dot.done {
+  background: var(--accent);
+  border-color: #8a4a10;
+}
+
+.jutsu-progress-dots .dot.active {
+  background: #ffd27a;
+  box-shadow: 0 0 10px 2px rgba(240, 150, 40, 0.7);
+}
+
+/* Chakra gauge: dark trough, gold rim, glowing blue fill. */
+.chakra-gauge {
+  height: 16px;
+  margin: 4px 0 10px;
+  border-radius: 8px;
+  background: #3a2f28;
+  border: 2px solid var(--gold);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+
+.chakra-gauge-fill {
+  height: 100%;
+  background: linear-gradient(180deg, #a8e8ff, var(--chakra) 55%, #1a62b0);
+  box-shadow: 0 0 10px #4fc3ff;
+  transition: width 0.1s linear;
 }
 
 .jutsu-result-card {
   position: absolute;
-  bottom: 40px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  margin: 0;
+  width: min(460px, 90vw);
+  transform: translate(-50%, -50%);
+  animation: none;
+}
+
+/* ---------- character picker ---------- */
+
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(20, 14, 30, 0.55);
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.2s ease-out;
+}
+
+.picker-shell {
+  width: min(980px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.picker-panel {
+  min-height: 0;
+  max-height: calc(100vh - 100px);
+}
+
+.picker-panel .storm-panel-body {
+  overflow-y: auto;
+}
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  grid-auto-rows: max-content;
+  gap: 10px;
+}
+
+.picker-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  color: var(--ink);
+  text-align: left;
+  border-radius: 8px;
+  border: 2px solid var(--gold);
+  background: linear-gradient(180deg, #fbf5e4, #eadcb4);
+  box-shadow: inset 0 0 0 2px rgba(255, 250, 235, 0.85);
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.picker-card:hover,
+.picker-card:focus-visible {
+  outline: none;
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(240, 150, 40, 0.45);
+}
+
+.picker-card img {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: top;
+  mix-blend-mode: multiply;
+}
+
+.picker-name {
+  padding: 6px 8px 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  border-top: 2px solid rgba(120, 100, 60, 0.35);
+}
+
+.picker-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+}
+
+/* ---------- sound toggle ---------- */
+
+.storm-mute {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #f3ead6;
+  border-radius: 50%;
+  border: 2px solid var(--purple-deep);
+  background: linear-gradient(180deg, var(--purple-hi), var(--purple));
+  box-shadow: 0 0 0 2px var(--gold-light), 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
+.storm-mute:hover {
+  filter: brightness(1.15);
 }
