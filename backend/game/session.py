@@ -3,12 +3,12 @@ import time
 import cv2
 
 from .sign_detector import SignDetector
-from .jutsu_catalog import sequence_for, build_effect
+from .jutsu_catalog import sequence_for
 
 HOLD_TIME = 0.5          # seconds a sign must be held to count
 GRACE = 0.6              # seconds the sign can drop out before hold resets
 TIME_LIMIT = 120.0       # soft cap so a stuck session still finishes
-CAST_DURATION = 2.5      # seconds the finished jutsu effect plays for
+CAST_DURATION = 6.0      # seconds before the result card shows (the browser draws the effect)
 SEQUENCE_LENGTH = 4
 
 BOX_COLOR = (60, 220, 255)
@@ -18,14 +18,14 @@ BANNER_BG = (10, 12, 18)
 
 
 class JutsuSession:
-    """One player's attempt at one jutsu. Owns its own sign detector and
-    effect instance; `process_frame` is called once per incoming frame and
-    returns (annotated_frame_bgr, state_dict)."""
+    """One player's attempt at one jutsu. Owns its own sign detector;
+    `process_frame` is called once per incoming frame and returns
+    (annotated_frame_bgr, state_dict). The cast effect itself is rendered
+    in the browser (web/src/fx), so the cast stage here is just a timer."""
 
     def __init__(self, skill_name):
         self.skill_name = skill_name
         self.sequence = sequence_for(skill_name, length=SEQUENCE_LENGTH)
-        self.effect = build_effect(skill_name)
         self.detector = SignDetector()
 
         self.stage = "play"
@@ -59,8 +59,12 @@ class JutsuSession:
 
     def process_frame(self, frame_bgr):
         dt = self._dt()
-        detection = self.detector.detect(frame_bgr)
-        canvas = frame_bgr
+        # Sign detection only matters while the sequence is being played.
+        detection = self.detector.detect(frame_bgr) if self.stage == "play" else None
+        # Mirrored like the browser's selfie view (and the cast effect), so the
+        # picture doesn't flip left/right when the jutsu fires. Detection above
+        # still runs on the raw frame.
+        canvas = cv2.flip(frame_bgr, 1)
 
         if self.stage == "play":
             target_sign = self.sequence[self.idx]
@@ -88,16 +92,6 @@ class JutsuSession:
             self._draw_play_hud(canvas, detection, target_sign)
 
         elif self.stage == "cast":
-            h, w = canvas.shape[:2]
-            if detection is not None:
-                x1, y1, x2, y2 = detection["bbox"]
-                anchor = ((x1 + x2) / 2, (y1 + y2) / 2)
-                base_r = max(40.0, (x2 - x1 + y2 - y1) / 2)
-            else:
-                anchor = (w / 2, h / 2)
-                base_r = min(w, h) * 0.22
-            self.effect.update(dt, self.power, anchor=anchor, base_r=base_r)
-            self.effect.draw(canvas, anchor, base_r, self.power)
             if time.time() - self.cast_start > CAST_DURATION:
                 self.stage = "done"
 
@@ -123,6 +117,7 @@ class JutsuSession:
 
         if detection is not None:
             x1, y1, x2, y2 = (int(v) for v in detection["bbox"])
+            x1, x2 = w - x2, w - x1  # bbox is in raw-frame coords; canvas is mirrored
             correct = detection["en"] == target_sign
             color = (90, 230, 120) if correct else BOX_COLOR
             cv2.rectangle(canvas, (x1, y1), (x2, y2), color, 3, cv2.LINE_AA)

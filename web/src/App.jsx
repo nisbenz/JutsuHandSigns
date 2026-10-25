@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SKILLS, DEFAULT_SKILLS } from "./data/skills";
 import HandSignIcon from "./components/HandSignIcon";
+import JutsuFx from "./fx/JutsuFx";
 import "./App.css";
 
 const STAGE = {
@@ -19,7 +20,6 @@ const COUNTDOWN_SECONDS = 5;
 const JUTSU_FRAME_INTERVAL_MS = 80;
 const INTRO_PLAYED_KEY = "shinobi-intro-played";
 
-const LIGHTNING_KEYWORDS = ["chidori", "lightning", "thunder", "lariat", "flicker"];
 const VOICE_BASE = `${import.meta.env.BASE_URL}voice/`;
 function jutsuVoiceCandidates(skillName) {
   if (!skillName) return [];
@@ -28,15 +28,6 @@ function jutsuVoiceCandidates(skillName) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return [VOICE_BASE + slug + ".mp3", VOICE_BASE + "default.mp3"];
-}
-
-function jutsuFxVideo(skillName) {
-  if (!skillName) return null;
-  const key = skillName.toLowerCase();
-  const name = LIGHTNING_KEYWORDS.some((k) => key.includes(k))
-    ? "tesla-coil"
-    : "plasma-orb";
-  return `${import.meta.env.BASE_URL}video/fx/${name}.webm`;
 }
 
 function introAlreadyPlayed() {
@@ -356,15 +347,8 @@ export default function App() {
             </div>
           )}
 
-          {jutsuState?.stage === "cast" && jutsuFxVideo(jutsuSkill) && (
-            <video
-              className="jutsu-fx-overlay"
-              src={jutsuFxVideo(jutsuSkill)}
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
+          {(jutsuState?.stage === "cast" || jutsuState?.stage === "done") && (
+            <JutsuFx skill={jutsuSkill} stream={streamRef.current} />
           )}
 
           {jutsuState?.stage === "cast" && voiceSrc && (
