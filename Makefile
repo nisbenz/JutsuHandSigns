@@ -1,4 +1,4 @@
-.PHONY: all run install install-backend install-frontend clean
+.PHONY: all run test install install-backend install-frontend clean
 
 all: run
 
@@ -6,6 +6,11 @@ all: run
 # frontend. Just running `make` with no target does this.
 run: install
 	./run.sh
+
+# Backend + frontend tests: no camera or model needed.
+test: install-backend install-frontend
+	cd backend && ../.venv/bin/python -m pytest -q tests
+	cd web && npm test
 
 install: install-backend install-frontend
 

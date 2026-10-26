@@ -794,3 +794,611 @@ button {
 .storm-mute:hover {
   filter: brightness(1.15);
 }
+
+/* ---------- PvP duel ---------- */
+
+/* Everything in the duel HUD is sized in em off this base, so it grows with
+   the screen: readable on a phone, and from 1.5 m away on a TV. */
+.pvp-screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  font-size: clamp(12px, calc(1.5vmin + 5px), 28px);
+}
+
+.pvp-screen.shake > .jutsu-frame,
+.pvp-screen.shake > .duel-stage,
+.pvp-screen.shake > .pvp-sides {
+  animation: pvp-screen-shake 0.45s linear;
+}
+
+@keyframes pvp-screen-shake {
+  0%, 100% { transform: scale(1.03) translate(0, 0); }
+  15% { transform: scale(1.03) translate(-1.2%, 0.8%); }
+  30% { transform: scale(1.03) translate(1%, -0.9%); }
+  45% { transform: scale(1.03) translate(-0.8%, -0.4%); }
+  60% { transform: scale(1.03) translate(0.6%, 0.6%); }
+  80% { transform: scale(1.03) translate(-0.3%, 0); }
+}
+
+.duel-stage {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.duel-stats {
+  position: absolute;
+  bottom: 70px;
+  left: 50%;
+  z-index: 6;
+  padding: 3px 10px;
+  font: 12px/1.4 ui-monospace, monospace;
+  color: #b8ffb8;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.7);
+  translate: -50% 0;
+  pointer-events: none;
+}
+
+.duel-debug {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.pvp-sides {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  pointer-events: none;
+}
+
+/* The inner padding keeps the health bars clear of the center timer. */
+.pvp-side {
+  position: relative;
+  min-width: 0;
+  padding: 0.9em 3.3em 0.9em 1em;
+}
+
+.pvp-side.right {
+  padding: 0.9em 1em 0.9em 3.3em;
+  border-left: 3px solid rgba(232, 215, 166, 0.85);
+  box-shadow: inset 3px 0 12px rgba(0, 0, 0, 0.35);
+}
+
+/* Hit: red bloom over the struck player's half, and their HUD shakes. */
+.pvp-side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, rgba(255, 40, 30, 0.45), rgba(255, 40, 30, 0.1) 70%);
+  transition: opacity 0.3s ease-out;
+}
+
+.pvp-side.hit::before {
+  opacity: 1;
+  transition: none;
+}
+
+.pvp-side.hit > .health,
+.pvp-side.hit > .pvp-seal {
+  animation: pvp-shake 0.35s linear;
+}
+
+@keyframes pvp-shake {
+  0%, 100% { translate: 0 0; }
+  20% { translate: -0.5em 0.12em; }
+  40% { translate: 0.45em -0.12em; }
+  60% { translate: -0.3em 0.06em; }
+  80% { translate: 0.2em 0; }
+}
+
+/* ----- health bars ----- */
+
+.health {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+
+.health.right {
+  flex-direction: row-reverse;
+}
+
+.health-portrait {
+  flex: none;
+  width: 3.2em;
+  height: 3.2em;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 0.5em;
+  border: 3px solid var(--gold-light);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.health-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.health-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5em;
+  margin-bottom: 0.25em;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px #000, 0 0 6px rgba(0, 0, 0, 0.6);
+}
+
+.health.right .health-label {
+  flex-direction: row-reverse;
+}
+
+.health-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 0.95em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.health-value {
+  margin-left: auto;
+  font-size: 1.15em;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-light);
+}
+
+.health.right .health-value {
+  margin: 0 auto 0 0;
+}
+
+.health-trough {
+  position: relative;
+  height: 1.25em;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #2a1f1a;
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 2px var(--purple-deep), inset 0 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+.health-trail,
+.health-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* P2's bar is anchored on the right edge, so both empty from the center line outward. */
+.health.right .health-trail,
+.health.right .health-fill {
+  left: auto;
+  right: 0;
+}
+
+.health-trail {
+  background: #fff2c2;
+  transition: width 0.6s ease-in 0.35s;
+}
+
+.health-fill {
+  transition: width 0.15s ease-out;
+}
+
+.health-fill.high { background: linear-gradient(180deg, #b6f27a, #4fb32c 55%, #2c7a17); }
+.health-fill.mid { background: linear-gradient(180deg, #ffe08a, #e0a01f 55%, #a86a0e); }
+.health-fill.low {
+  background: linear-gradient(180deg, #ff9c8a, #e0361f 55%, #9a1a0e);
+  animation: pvp-low 0.8s ease-in-out infinite alternate;
+}
+
+/* The bar blinks white the instant damage lands. */
+.health.hurt .health-fill {
+  filter: brightness(2.2) saturate(0.3);
+}
+
+.health.hurt .health-trough {
+  box-shadow: 0 0 0 2px var(--purple-deep), 0 0 14px 3px rgba(255, 80, 50, 0.85);
+}
+
+@keyframes pvp-low {
+  to { filter: brightness(1.35); }
+}
+
+/* ----- seal card: compact, top outer corner, clear of the hands ----- */
+
+.pvp-seal {
+  position: absolute;
+  top: 5em;
+  width: min(17em, calc(100% - 1.6em));
+  padding: 0.3em;
+  border-radius: 0.8em;
+  background: linear-gradient(180deg, var(--frame), #aaa2bc);
+  box-shadow: 0 0 0 2px #5d5275, 0 0.6em 1.6em rgba(0, 0, 0, 0.45);
+}
+
+.pvp-side.left .pvp-seal { left: 0.8em; }
+.pvp-side.right .pvp-seal { right: 0.8em; }
+
+.pvp-seal-skill {
+  padding: 0.3em 0.6em;
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: #f3ead6;
+  border-radius: 0.6em 0.6em 0.2em 0.2em;
+  background: linear-gradient(180deg, var(--purple-hi) 0%, var(--purple) 55%, #34264f 100%);
+  text-shadow: 0 2px 0 #1d1430;
+}
+
+.pvp-seal-body {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  margin-top: 0.25em;
+  padding: 0.5em 0.6em;
+  border-radius: 0.2em 0.2em 0.6em 0.6em;
+  background: radial-gradient(ellipse at 50% 25%, #f9f4e3, var(--parchment) 65%, #e2d6b4);
+  border: 2px solid var(--frame-dark);
+}
+
+.pvp-seal .hand-sign-photo,
+.pvp-seal .hand-sign-icon {
+  flex: none;
+  width: 4.5em !important;
+  height: 4.5em !important;
+  margin: 0;
+}
+
+.pvp-seal-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35em;
+}
+
+.pvp-seal-name {
+  font-size: 1.5em;
+  font-weight: 700;
+  line-height: 1;
+  color: #3a2a5a;
+}
+
+.pvp-seal .jutsu-progress-dots {
+  justify-content: flex-start;
+  gap: 0.4em;
+  margin: 0;
+}
+
+.pvp-seal .jutsu-progress-dots .dot {
+  width: 0.8em;
+  height: 0.8em;
+}
+
+.pvp-seal .chakra-gauge {
+  height: 0.75em;
+  margin: 0;
+}
+
+.pvp-seal-detected {
+  overflow: hidden;
+  font-size: 0.75em;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-soft);
+}
+
+/* Seal landed: a gold flare around the card and a red 印 stamp. */
+.pvp-seal-glow {
+  position: absolute;
+  inset: -0.3em;
+  border-radius: 1em;
+  pointer-events: none;
+  box-shadow: 0 0 0 3px #ffe08a, 0 0 2em 0.6em rgba(255, 210, 90, 0.9);
+  background: radial-gradient(ellipse, rgba(255, 245, 200, 0.7), transparent 70%);
+  animation: pvp-seal-glow 0.7s ease-out forwards;
+}
+
+@keyframes pvp-seal-glow {
+  0% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* On the card's outer corner, away from the timer and the other player's card. */
+.pvp-stamp {
+  position: absolute;
+  top: -0.5em;
+  left: -0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7em;
+  height: 1.7em;
+  font-size: 1.4em;
+  font-weight: 900;
+  color: #fff4e6;
+  border-radius: 0.3em;
+  background: #c8281c;
+  border: 2px solid #7a0d06;
+  box-shadow: 0 0.2em 0.6em rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  animation: pvp-stamp 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.3) forwards;
+}
+
+.pvp-side.right .pvp-stamp {
+  left: auto;
+  right: -0.5em;
+}
+
+@keyframes pvp-stamp {
+  0% { opacity: 0; transform: scale(2.4) rotate(-25deg); }
+  25% { opacity: 1; transform: scale(0.92) rotate(-8deg); }
+  35% { transform: scale(1) rotate(-8deg); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1) rotate(-8deg); }
+}
+
+/* ----- hit effects ----- */
+
+.pvp-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pvp-float {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  z-index: 4;
+  font-size: 3.2em;
+  font-weight: 900;
+  color: #fff;
+  white-space: nowrap;
+  -webkit-text-stroke: 2px #7a0d06;
+  text-shadow: 0 3px 0 #7a0d06, 0 0 18px rgba(255, 60, 30, 0.8);
+  translate: -50% 0;
+  animation: pvp-float 1.1s ease-out forwards;
+}
+
+.pvp-float.jutsu {
+  font-size: 4.6em;
+  color: #ffe08a;
+}
+
+@keyframes pvp-float {
+  0% { opacity: 0; transform: translateY(0.3em) scale(0.5); }
+  15% { opacity: 1; transform: translateY(0) scale(1.25); }
+  30% { transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-1.4em); }
+}
+
+/* Jutsu callout: a slanted strip sweeping in from the attacker's side. */
+.pvp-banner {
+  position: absolute;
+  top: 66%;
+  left: -5%;
+  right: -5%;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  padding: 0.35em 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(10, 8, 20, 0.85) 15%, rgba(10, 8, 20, 0.85) 85%, transparent);
+  border-top: 3px solid var(--fx-glow);
+  border-bottom: 3px solid var(--fx-glow);
+  transform: skewY(-4deg);
+  animation: pvp-banner-left 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.pvp-banner.from-right {
+  animation-name: pvp-banner-right;
+}
+
+.pvp-banner span {
+  max-width: 92vw;
+  overflow: hidden;
+  font-size: 2.6em;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fx-core);
+  text-shadow: 0 0 0.3em var(--fx-glow), 0 0 0.8em var(--fx-glow), 0 3px 0 #000;
+}
+
+@keyframes pvp-banner-left {
+  0% { opacity: 0; translate: -60% 0; }
+  18% { opacity: 1; translate: 0 0; }
+  78% { opacity: 1; translate: 3% 0; }
+  100% { opacity: 0; translate: 40% 0; }
+}
+
+@keyframes pvp-banner-right {
+  0% { opacity: 0; translate: 60% 0; }
+  18% { opacity: 1; translate: 0 0; }
+  78% { opacity: 1; translate: -3% 0; }
+  100% { opacity: 0; translate: -40% 0; }
+}
+
+.pvp-impact-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background: radial-gradient(ellipse 45% 60% at var(--fx-x, 50%) 50%, rgba(255, 255, 255, 0.9), var(--fx-glow) 35%, transparent 75%);
+  mix-blend-mode: screen;
+  animation: pvp-impact-flash 0.4s ease-out forwards;
+}
+
+/* Bloom centered on the struck player's half. */
+.pvp-impact-flash.on-left { --fx-x: 25%; }
+.pvp-impact-flash.on-right { --fx-x: 75%; }
+
+@keyframes pvp-impact-flash {
+  from { opacity: 0.5; }
+  to { opacity: 0; }
+}
+
+/* ----- timer, countdown, result ----- */
+
+.pvp-timer {
+  position: absolute;
+  top: 0.6em;
+  left: 50%;
+  z-index: 2;
+  min-width: 2.2em;
+  padding: 0.1em 0.3em;
+  font-size: 2em;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--purple);
+  border-radius: 0.35em;
+  background: radial-gradient(circle at 40% 35%, #fbf6e6, var(--parchment) 60%, #d9c99c);
+  border: 3px solid var(--purple);
+  box-shadow: 0 0 0 2px var(--gold-light), 0 6px 18px rgba(0, 0, 0, 0.5);
+  translate: -50% 0;
+}
+
+.pvp-count {
+  width: 2.3em;
+  height: 2.3em;
+  font-size: 3.4em;
+  animation: pvp-pop 0.4s ease-out;
+}
+
+@keyframes pvp-pop {
+  from { transform: scale(1.6); opacity: 0.2; }
+}
+
+.pvp-result {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 5;
+  width: min(26em, 90vw);
+  max-height: calc(100% - 5.5em);
+  overflow: auto;
+  text-align: center;
+  translate: -50% -55%;
+}
+
+.pvp-result .storm-name {
+  font-size: 2em;
+}
+
+.pvp-winner-portrait {
+  display: block;
+  width: min(7em, 24vh);
+  height: min(7em, 24vh);
+  margin: 0 auto 0.5em;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 0.6em;
+  border: 3px solid var(--gold);
+}
+
+.pvp-prompts {
+  z-index: 6;
+}
+
+.pvp-prompts .storm-prompt {
+  font-size: max(1rem, 1.1em);
+}
+
+/* The health bars own the top corners during a duel. */
+.camera-screen:has(.pvp-screen) .storm-mute {
+  top: auto;
+  bottom: 24px;
+}
+
+/* Short landscape screens (phones on their side): drop the extra line. */
+@media (max-height: 480px) {
+  .pvp-seal-detected {
+    display: none;
+  }
+  .pvp-seal {
+    top: 4.6em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pvp-side.hit > .health,
+  .pvp-side.hit > .pvp-seal,
+  .pvp-banner {
+    animation-duration: 0.01s;
+  }
+}
+
+/* ---------- dev duel FX lab (?fxlab=duel) ---------- */
+
+.duel-lab {
+  position: fixed;
+  top: 70px;
+  left: 50%;
+  z-index: 100;
+  width: min(560px, 96vw);
+  font: 12px/1.4 system-ui, sans-serif;
+  color: #eee;
+  border-radius: 8px;
+  background: rgba(10, 10, 16, 0.86);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  translate: -50% 0;
+}
+
+.duel-lab.closed {
+  width: auto;
+}
+
+.duel-lab-toggle {
+  width: 100%;
+  padding: 4px 10px;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  color: #ffd27a;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.duel-lab-body {
+  display: grid;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.duel-lab-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.duel-lab button,
+.duel-lab select {
+  font: inherit;
+  padding: 2px 6px;
+}
+
+.duel-lab input[type="range"] {
+  width: 70px;
+  vertical-align: middle;
+}
