@@ -173,8 +173,9 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
-# downloaded MediaPipe model
-models/
+# downloaded MediaPipe models (the 3D assets in web/public/models are tracked)
+/models/
+/backend/models/
 
 # local preview renders
 preview_*.png

@@ -4,7 +4,7 @@ import { FilesetResolver, HandLandmarker, PoseLandmarker, FaceLandmarker } from 
 // body pose and the face mesh. Models are created once per page and shared
 // across casts; only the ones a jutsu needs are loaded.
 
-const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm";
+const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.1/wasm";
 const MODEL_BASE = "https://storage.googleapis.com/mediapipe-models";
 
 let visionPromise = null;
