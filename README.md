@@ -15,6 +15,16 @@ python main.py
 
 A webcam is required. Open your hand near the camera so the tracker locks on.
 
+### With Docker
+
+```bash
+docker compose up --build
+```
+
+Then open <http://localhost:5177>. The backend listens on port 8000; if either
+port is taken, override it, e.g. `BACKEND_PORT=8002 FRONTEND_PORT=5180 docker compose up --build`.
+The webcam is used by the browser, so no device needs to be passed to the containers.
+
 ## Controls
 
 | Key                | Action                          |

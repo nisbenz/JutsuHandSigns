@@ -1,0 +1,31 @@
+# Run the whole app with:  docker compose up --build
+# Then open http://localhost:5177 (override ports with BACKEND_PORT / FRONTEND_PORT).
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      # Saved webcam captures persist across restarts, outside the image.
+      - captures:/app/captures
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_MATCH_WS_URL: ws://localhost:${BACKEND_PORT:-8000}/ws/match
+        VITE_JUTSU_WS_URL: ws://localhost:${BACKEND_PORT:-8000}/ws/jutsu
+        VITE_PVP_WS_URL: ws://localhost:${BACKEND_PORT:-8000}/ws/pvp
+    ports:
+      - "${FRONTEND_PORT:-5177}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  captures:
