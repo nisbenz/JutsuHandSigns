@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SKILLS, DEFAULT_SKILLS } from "./data/skills";
 import HandSignIcon from "./components/HandSignIcon";
+import JutsuFx from "./fx/JutsuFx";
 import JutsuCast from "./components/JutsuCast";
 import CharacterPicker from "./components/CharacterPicker";
+import PvpDuel from "./components/PvpDuel";
 import { MuteToggle, Prompt, StormPanel, StormRow, StormSky, Strip } from "./components/Storm";
 import { sfx } from "./sfx";
+import { useFrameSocket } from "./useFrameSocket";
+import { createFakeCamStream, fakeCamRequested } from "./fakecam";
 import { preloadVfx, vfxFor } from "./vfx/registry";
 import "./App.css";
 
@@ -16,6 +20,8 @@ const STAGE = {
   NO_FACE: "no_face",
   RESULT: "result",
   JUTSU: "jutsu",
+  PVP_SETUP: "pvp_setup",
+  PVP: "pvp",
 };
 
 const WS_URL = import.meta.env.VITE_MATCH_WS_URL || "ws://localhost:8000/ws/match";
@@ -24,7 +30,6 @@ const COUNTDOWN_SECONDS = 5;
 const JUTSU_FRAME_INTERVAL_MS = 80;
 const INTRO_PLAYED_KEY = "shinobi-intro-played";
 
-const LIGHTNING_KEYWORDS = ["chidori", "lightning", "thunder", "lariat", "flicker"];
 const VOICE_BASE = `${import.meta.env.BASE_URL}voice/`;
 function jutsuVoiceCandidates(skillName) {
   if (!skillName) return [];
@@ -33,15 +38,6 @@ function jutsuVoiceCandidates(skillName) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   return [VOICE_BASE + slug + ".mp3", VOICE_BASE + "default.mp3"];
-}
-
-function jutsuFxVideo(skillName) {
-  if (!skillName) return null;
-  const key = skillName.toLowerCase();
-  const name = LIGHTNING_KEYWORDS.some((k) => key.includes(k))
-    ? "tesla-coil"
-    : "plasma-orb";
-  return `${import.meta.env.BASE_URL}video/fx/${name}.webm`;
 }
 
 function introAlreadyPlayed() {
@@ -72,13 +68,14 @@ export default function App() {
   const [clientCast, setClientCast] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [trainedCount, setTrainedCount] = useState(0);
+  // PvP: characters picked so far (P1 then P2) and where "Exit" goes back to.
+  const [pvpPicks, setPvpPicks] = useState([]);
+  const [pvpReturn, setPvpReturn] = useState(STAGE.CAMERA);
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const wsRef = useRef(null);
   const countdownTimerRef = useRef(null);
-  const jutsuWsRef = useRef(null);
-  const jutsuIntervalRef = useRef(null);
   const stageRef = useRef(stage);
   stageRef.current = stage;
 
@@ -104,7 +101,8 @@ export default function App() {
         setResult(msg.character);
         setStage(STAGE.RESULT);
       } else {
-        setError("The server couldn't process that frame. Try again.");
+        // A bad frame isn't fatal: go back and run the countdown again.
+        console.warn("[match] server couldn't process the frame", msg);
         setStage(STAGE.CAMERA);
       }
     };
@@ -130,9 +128,11 @@ export default function App() {
     let cancelled = false;
     (async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: 1280, height: 720 },
-        });
+        const stream = fakeCamRequested()
+          ? createFakeCamStream()
+          : await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: "user", width: 1280, height: 720 },
+            });
         if (cancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -221,58 +221,35 @@ export default function App() {
 
   // Jutsu practice: opens its own websocket, streams webcam frames, and
   // displays whatever annotated frame (skeleton / HUD / effect) comes back.
+  const jutsuActive = stage === STAGE.JUTSU && Boolean(jutsuSkill);
   useEffect(() => {
-    if (stage !== STAGE.JUTSU || !jutsuSkill) return;
-    let cancelled = false;
+    if (!jutsuActive) return;
     setJutsuFrame(null);
     setJutsuState(null);
     setClientCast(null);
-    const hasClientVfx = Boolean(vfxFor(jutsuSkill));
+  }, [jutsuActive, jutsuSkill]);
 
-    const ws = new WebSocket(JUTSU_WS_URL);
-    jutsuWsRef.current = ws;
-
-    const sendFrame = () => {
-      const video = videoRef.current;
-      if (!video || !video.videoWidth || ws.readyState !== WebSocket.OPEN) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-      ws.send(JSON.stringify({ type: "frame", image: canvas.toDataURL("image/jpeg", 0.85) }));
-    };
-
-    ws.onopen = () => {
-      if (cancelled) return;
-      ws.send(JSON.stringify({ type: "start", skill: jutsuSkill }));
-      jutsuIntervalRef.current = setInterval(sendFrame, JUTSU_FRAME_INTERVAL_MS);
-    };
-    ws.onmessage = (event) => {
-      if (cancelled) return;
-      const msg = JSON.parse(event.data);
+  useFrameSocket({
+    url: JUTSU_WS_URL,
+    videoRef,
+    active: jutsuActive,
+    startMessage: { type: "start", skill: jutsuSkill },
+    intervalMs: JUTSU_FRAME_INTERVAL_MS,
+    onMessage: (msg, stop) => {
       if (msg.status !== "frame") return;
-      if (msg.state.stage === "cast" && hasClientVfx) {
+      if (msg.state.stage === "cast" && vfxFor(jutsuSkill)) {
         // The backend's job ends at "sequence complete"; the cast itself
         // runs in the browser at full frame rate.
-        clearInterval(jutsuIntervalRef.current);
-        ws.close();
+        stop();
         setJutsuState(msg.state);
         setClientCast({ power: msg.state.power ?? 1 });
         return;
       }
       setJutsuFrame(msg.image);
       setJutsuState(msg.state);
-    };
-    ws.onerror = () => {
-      if (!cancelled) setError("Couldn't reach the jutsu training server.");
-    };
-
-    return () => {
-      cancelled = true;
-      clearInterval(jutsuIntervalRef.current);
-      ws.close();
-    };
-  }, [stage, jutsuSkill]);
+    },
+    onError: () => setError("Couldn't reach the jutsu training server."),
+  });
 
   // Voice shout: at cast time, probe recorded clips in /voice/ — the exact
   // technique slug first ("rasengan.mp3"), then default.mp3. A missing file
@@ -351,6 +328,23 @@ export default function App() {
 
   const handleClosePicker = useCallback(() => setPickerOpen(false), []);
 
+  const handleStartPvp = useCallback(() => {
+    setPvpReturn(stageRef.current === STAGE.RESULT ? STAGE.RESULT : STAGE.CAMERA);
+    setPvpPicks([]);
+    setStage(STAGE.PVP_SETUP);
+  }, []);
+
+  const handlePvpPick = useCallback((character) => {
+    const next = [...pvpPicks, character];
+    setPvpPicks(next);
+    if (next.length === 2) setStage(STAGE.PVP);
+  }, [pvpPicks]);
+
+  const handleExitPvp = useCallback(() => {
+    setPvpPicks([]);
+    setStage(pvpReturn);
+  }, [pvpReturn]);
+
   const handleRetry = useCallback(() => {
     setResult(null);
     setStage(STAGE.CAMERA);
@@ -404,6 +398,18 @@ export default function App() {
         className={`video-fullscreen ${stage === STAGE.JUTSU ? "hidden" : ""}`}
       />
 
+      {stage === STAGE.PVP && pvpPicks.length === 2 && (
+        <PvpDuel videoRef={videoRef} characters={pvpPicks} onExit={handleExitPvp} onError={setError} />
+      )}
+      {stage === STAGE.PVP_SETUP && (
+        <CharacterPicker
+          key={pvpPicks.length}
+          title={`Player ${pvpPicks.length + 1}: choose your shinobi`}
+          onPick={handlePvpPick}
+          onClose={handleExitPvp}
+        />
+      )}
+
       {stage === STAGE.JUTSU && (
         <div className="jutsu-screen">
           {clientCast ? (
@@ -425,15 +431,8 @@ export default function App() {
             </div>
           )}
 
-          {!clientCast && jutsuState?.stage === "cast" && jutsuFxVideo(jutsuSkill) && (
-            <video
-              className="jutsu-fx-overlay"
-              src={jutsuFxVideo(jutsuSkill)}
-              autoPlay
-              muted
-              loop
-              playsInline
-            />
+          {!clientCast && (jutsuState?.stage === "cast" || jutsuState?.stage === "done") && (
+            <JutsuFx skill={jutsuSkill} character={result?.id} stream={streamRef.current} />
           )}
 
           {jutsuState?.stage === "cast" && voiceSrc && (
@@ -479,7 +478,7 @@ export default function App() {
         </div>
       )}
 
-      {stage !== STAGE.RESULT && stage !== STAGE.JUTSU && (
+      {(stage === STAGE.CAMERA || stage === STAGE.ANALYZING || stage === STAGE.NO_FACE) && (
         <div className="hud">
           <div className="hud-corner tl" />
           <div className="hud-corner tr" />
@@ -504,6 +503,7 @@ export default function App() {
             </div>
           )}
           <div className="prompt-bar">
+            <Prompt onClick={handleStartPvp}>Duel (1v1)</Prompt>
             <Prompt onClick={() => setPickerOpen(true)}>Choose character</Prompt>
           </div>
         </div>
@@ -534,6 +534,7 @@ export default function App() {
           <Strip className="result-strip" label="Jutsu trained" value={trainedCount} />
           <div className="prompt-bar">
             <Prompt back onClick={handleRetry}>Scan again</Prompt>
+            <Prompt onClick={handleStartPvp}>Duel (1v1)</Prompt>
             <Prompt onClick={() => setPickerOpen(true)}>Choose character</Prompt>
           </div>
         </StormSky>

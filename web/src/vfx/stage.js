@@ -11,7 +11,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 
 const FOV = 45;
 const CAM_Z = 10;
-const LIGHTS = 2;
+const LIGHTS = 4; // 2 per player in duels; casts use slots 0-1
 // The feed is capped below the bloom threshold so only effects (which use
 // HDR colors > 1) glow, not bright windows behind the player.
 const BG_CEILING = 0.9;
@@ -59,6 +59,10 @@ uniform float uInvert;
 uniform float uContrast;
 uniform vec3 uTint;
 uniform vec3 uFlash;
+// Per-half grade for duels (x = left half, y = right half), neutral by default.
+uniform vec2 uHalfDesat;
+uniform vec2 uHalfDarken;
+uniform vec3 uHalfTint[2];
 varying vec2 vUv;
 
 ${COVER_GLSL}
@@ -78,6 +82,11 @@ void main() {
   c = mix(c, vec3(1.0) - c, uInvert);
   c = clamp((c - 0.5) * uContrast + 0.5, 0.0, 1.0);
   c *= uTint * (1.0 - uDarken);
+
+  // Soft seam so the two halves' grades blend at the divider.
+  float side = smoothstep(0.485, 0.515, vUv.x);
+  c = mix(c, vec3(dot(c, vec3(0.299, 0.587, 0.114))), mix(uHalfDesat.x, uHalfDesat.y, side));
+  c *= mix(uHalfTint[0], uHalfTint[1], side) * (1.0 - mix(uHalfDarken.x, uHalfDarken.y, side));
 
   for (int i = 0; i < LIGHTS; i++) {
     float r = length((vUv - uLight[i].xy) * aspect) / max(uLight[i].z, 1e-4);
@@ -152,6 +161,9 @@ export class Stage {
         uContrast: { value: 1 },
         uTint: { value: new THREE.Color(1, 1, 1) },
         uFlash: { value: new THREE.Color(0, 0, 0) },
+        uHalfDesat: { value: new THREE.Vector2() },
+        uHalfDarken: { value: new THREE.Vector2() },
+        uHalfTint: { value: [new THREE.Color(1, 1, 1), new THREE.Color(1, 1, 1)] },
       },
       vertexShader: BG_VERT,
       fragmentShader: BG_FRAG,
@@ -213,6 +225,9 @@ export class Stage {
     u.uContrast.value = 1;
     u.uTint.value.setRGB(1, 1, 1);
     u.uFlash.value.setRGB(0, 0, 0);
+    u.uHalfDesat.value.set(0, 0);
+    u.uHalfDarken.value.set(0, 0);
+    u.uHalfTint.value.forEach((c) => c.setRGB(1, 1, 1));
     const p = this.post.uniforms;
     p.uAberration.value = 0.02;
     p.uVignette.value = 0.2;
@@ -232,6 +247,15 @@ export class Stage {
     const u = this.bg.uniforms;
     u.uLight.value[i].set(px / this.width, 1 - py / this.height, radiusPx / this.height, intensity);
     u.uLightColor.value[i].copy(color);
+  }
+
+  // Colour grade for one half of the screen only (0 = left, 1 = right), on
+  // top of the global grade. Used by duels; resets every frame like the rest.
+  setHalfGrade(side, { desaturate = 0, darken = 0, tint } = {}) {
+    const u = this.bg.uniforms;
+    u.uHalfDesat.value.setComponent(side, desaturate);
+    u.uHalfDarken.value.setComponent(side, darken);
+    if (tint) u.uHalfTint.value[side].copy(tint);
   }
 
   set darken(v) { this.bg.uniforms.uDarken.value = v; }

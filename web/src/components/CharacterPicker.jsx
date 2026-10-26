@@ -8,7 +8,7 @@ import { sfx } from "../sfx";
 // Manual character select — skips the face scan so every roster entry (and
 // its techniques) can be reached directly. Characters with at least one
 // technique that has a 3D cast effect are badged.
-export default function CharacterPicker({ onPick, onClose }) {
+export default function CharacterPicker({ onPick, onClose, title = "Choose your shinobi" }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== "Escape") return;
@@ -22,7 +22,7 @@ export default function CharacterPicker({ onPick, onClose }) {
   return (
     <div className="picker-backdrop" onClick={onClose}>
       <div className="picker-shell" onClick={(e) => e.stopPropagation()}>
-        <StormPanel title="Choose your shinobi" className="picker-panel" sound="open">
+        <StormPanel title={title} className="picker-panel" sound="open">
           <div className="picker-grid">
             {CHARACTERS.map((c) => {
               const skills = (SKILLS[c.id] || DEFAULT_SKILLS).slice(0, 3);
